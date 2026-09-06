@@ -1,4 +1,4 @@
-# 🕸️ Ravel — Forensic Audit & Relationship Mapping Platform
+# 🕸️ Ravel - Forensic Audit & Relationship Mapping Platform
 
 ## Project Overview
 
