@@ -19,6 +19,8 @@ Traditional auditing workflows rely on static spreadsheets and tabular record vi
 ### The Solution
 Ravel bridges relational database management and graph visual analytics without requiring complex graph database infrastructure. An automated backend rule-engine surfaces candidate links, allowing auditors to visually trace multi-hop connections, confirm high-risk ties, and expose fraud schemes at a glance.
 
+
+
 ---
 
 ## Webpage Architecture
