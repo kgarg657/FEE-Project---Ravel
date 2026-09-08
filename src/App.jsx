@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
 import MainLayout from './layouts/MainLayout';
 import theme from './theme';
 
-function App() {
+// Sub-component rendering dashboard views based on custom state navigation
+function Dashboard() {
   const [currentPath, setCurrentPath] = useState('/entities');
 
   const handleLogout = () => {
@@ -55,7 +59,7 @@ function App() {
       {currentPath === '/cases' && (
         <div>
           <h1 style={{ color: theme.colors.textPrimary, marginTop: 0 }}>
-            Case Management & Investigation Workspace
+            Case Management & Workspace
           </h1>
           <p style={{ color: theme.colors.textSecondary }}>
             Logged in: J. Doe (Senior Auditor)
@@ -75,6 +79,20 @@ function App() {
         </div>
       )}
     </MainLayout>
+  );
+}
+
+// Main App component combining routing
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/dashboard/*" element={<Dashboard />} />
+      </Routes>
+    </Router>
   );
 }
 
