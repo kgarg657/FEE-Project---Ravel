@@ -1,33 +1,81 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
-import theme from './theme'
-import Button from './components/Button'
+import { useState } from 'react';
+import MainLayout from './layouts/MainLayout';
+import theme from './theme';
 
-import Card from './components/Card'
-import Input from './components/Input'
 function App() {
+  const [currentPath, setCurrentPath] = useState('/entities');
+
+  const handleLogout = () => {
+    alert('Logging out...');
+  };
 
   return (
-    <>
-    <Button variant="primary" onClick={() => alert('clicked')}>Create Account</Button>
-<Button variant="secondary">Log In</Button>
-<Button variant="danger">Reject</Button>
-<Input label="Full Name" placeholder="Full Name" required />
-<Input label="Password" type="password" placeholder="Password" />
-<Input label="Confirm Password" type="password" error="Passwords do not match" />
-<Card title="Registry Statistics">
-  <p style={{ color: theme.colors.textSecondary }}>Total Entities: 1250</p>
-  <p style={{ color: theme.colors.textSecondary }}>Flagged Entities: 15</p>
-</Card>
+    <MainLayout
+      currentPath={currentPath}
+      onNavigate={(path) => setCurrentPath(path)}
+      onLogout={handleLogout}
+    >
+      {/* 1. Investigation Canvas */}
+      {currentPath === '/investigations/1' && (
+        <div>
+          <h1 style={{ color: theme.colors.textPrimary, marginTop: 0 }}>
+            Investigation Canvas
+          </h1>
+          <p style={{ color: theme.colors.textSecondary }}>
+            Active Investigation: Procurement Audit Q3 2026
+          </p>
+        </div>
+      )}
 
-<Card padding="16px">
-  <Button variant="primary">Inside a plain card, no title</Button>
-</Card>
-     </>
-  )
+      {/* 2. Entity Registry */}
+      {currentPath === '/entities' && (
+        <div>
+          <h1 style={{ color: theme.colors.textPrimary, marginTop: 0 }}>
+            Entity Registry & Master Data
+          </h1>
+          <p style={{ color: theme.colors.textSecondary }}>
+            Logged in: J. Doe (Senior Auditor)
+          </p>
+        </div>
+      )}
+
+      {/* 3. Analytics */}
+      {currentPath === '/analytics' && (
+        <div>
+          <h1 style={{ color: theme.colors.textPrimary, marginTop: 0 }}>
+            Forensic Analytics & Deep Insights
+          </h1>
+          <p style={{ color: theme.colors.textSecondary }}>
+            Logged in: J. Doe (Senior Auditor)
+          </p>
+        </div>
+      )}
+
+      {/* 4. Case Management */}
+      {currentPath === '/cases' && (
+        <div>
+          <h1 style={{ color: theme.colors.textPrimary, marginTop: 0 }}>
+            Case Management & Investigation Workspace
+          </h1>
+          <p style={{ color: theme.colors.textSecondary }}>
+            Logged in: J. Doe (Senior Auditor)
+          </p>
+        </div>
+      )}
+
+      {/* 5. Settings */}
+      {currentPath === '/settings' && (
+        <div>
+          <h1 style={{ color: theme.colors.textPrimary, marginTop: 0 }}>
+            Platform Settings & Configurations
+          </h1>
+          <p style={{ color: theme.colors.textSecondary }}>
+            Logged in: J. Doe (Senior Auditor)
+          </p>
+        </div>
+      )}
+    </MainLayout>
+  );
 }
 
-export default App
+export default App;
