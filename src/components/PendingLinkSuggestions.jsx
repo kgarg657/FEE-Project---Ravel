@@ -1,10 +1,34 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Card from './Card';
+import Button from './Button';
 import theme from '../theme';
 
-function PendingLinkSuggestions({ suggestions = [], onApprove, onReject }) {
+function PendingLinkSuggestions({ suggestions = [], onApprove, onReject, onRunAIDiscovery }) {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const handleRunAI = async () => {
+    if (!onRunAIDiscovery) return;
+    setIsAnalyzing(true);
+    await onRunAIDiscovery();
+    setIsAnalyzing(false);
+  };
+
   return (
-    <Card title="Pending Link Suggestions">
+    <Card
+      title={
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Pending Link Suggestions</span>
+          <Button
+            variant="secondary"
+            onClick={handleRunAI}
+            disabled={isAnalyzing}
+            style={{ fontSize: '11px', padding: '4px 8px' }}
+          >
+            {isAnalyzing ? 'Scanning...' : '⚡ Run AI Scan'}
+          </Button>
+        </div>
+      }
+    >
       <div
         style={{
           display: 'flex',
@@ -24,7 +48,7 @@ function PendingLinkSuggestions({ suggestions = [], onApprove, onReject }) {
               fontFamily: theme.fonts.sans,
             }}
           >
-            No pending link suggestions available.
+            No pending suggestions. Click <strong>⚡ Run AI Scan</strong> to discover hidden links.
           </p>
         ) : (
           suggestions.map((item) => (

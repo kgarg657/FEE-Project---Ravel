@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "^2.21.0",
     "@tailwindcss/vite": "^4.3.3",
     "@xyflow/react": "^12.11.6",
     "lucide-react": "^1.41.0",
