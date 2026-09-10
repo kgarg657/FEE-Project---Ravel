@@ -26,16 +26,11 @@ function GraphCanvas({ initialNodes = [], initialEdges = [], onNodeClick, onNode
   const [selectedElements, setSelectedElements] = useState([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // --- Click-to-connect state ---
   const [connectMode, setConnectMode] = useState(false);
   const [connectSourceId, setConnectSourceId] = useState(null);
-  const [pendingConnection, setPendingConnection] = useState(null); // { source, target }
+  const [pendingConnection, setPendingConnection] = useState(null);
 
-  // --- Edge-click-to-delete state ---
-  const [edgeToDelete, setEdgeToDelete] = useState(null); // edge id
-
-  // --- Lock state: driven by the padlock icon in React Flow's Controls panel.
-  // When false: no dragging, connecting, or deleting — pan/zoom to view still works.
+  const [edgeToDelete, setEdgeToDelete] = useState(null);
   const [isInteractive, setIsInteractive] = useState(true);
 
   useEffect(() => {
@@ -108,14 +103,13 @@ function GraphCanvas({ initialNodes = [], initialEdges = [], onNodeClick, onNode
     [setEdges]
   );
 
-  // --- Click-to-connect handlers ---
   const handleNodeClick = (_, node) => {
-    if (!isInteractive) return; // locked: node clicks do nothing but view/pan still works
+    if (!isInteractive) return;
     if (connectMode) {
       if (!connectSourceId) {
         setConnectSourceId(node.id);
       } else if (connectSourceId === node.id) {
-        setConnectSourceId(null); // clicked same node again -> deselect
+        setConnectSourceId(null);
       } else {
         setPendingConnection({ source: connectSourceId, target: node.id });
       }
@@ -125,13 +119,12 @@ function GraphCanvas({ initialNodes = [], initialEdges = [], onNodeClick, onNode
   };
 
   const handleToggleConnectMode = () => {
-    if (!isInteractive) return; // locked — no editing allowed
+    if (!isInteractive) return;
     setConnectMode((prev) => !prev);
     setConnectSourceId(null);
     setPendingConnection(null);
   };
 
-  // If the canvas gets locked while Connect Mode is mid-flow, cancel it cleanly
   useEffect(() => {
     if (!isInteractive) {
       setConnectMode(false);
@@ -157,9 +150,8 @@ function GraphCanvas({ initialNodes = [], initialEdges = [], onNodeClick, onNode
     setConnectSourceId(null);
   };
 
-  // --- Edge-click-to-delete handlers ---
   const handleEdgeClick = (_, edge) => {
-    if (!isInteractive) return; // locked: no edge deletion
+    if (!isInteractive) return;
     setEdgeToDelete(edge.id);
   };
 
@@ -173,7 +165,6 @@ function GraphCanvas({ initialNodes = [], initialEdges = [], onNodeClick, onNode
   const edgeToDeleteInfo = edges.find((e) => e.id === edgeToDelete);
   const sourceNodeLabel = (id) => nodes.find((n) => n.id === id)?.data?.label || id;
 
-  // Highlight the currently-selected connect-source node with a glowing ring
   const displayNodes = nodes.map((n) => ({
     ...n,
     style:
@@ -187,7 +178,6 @@ function GraphCanvas({ initialNodes = [], initialEdges = [], onNodeClick, onNode
       style={{
         width: '100%',
         height: '100%',
-        minHeight: '580px',
         backgroundColor: theme.colors.bg,
         border: `1px solid ${theme.colors.border}`,
         borderRadius: '8px',
@@ -197,7 +187,7 @@ function GraphCanvas({ initialNodes = [], initialEdges = [], onNodeClick, onNode
     >
       <EdgeLegend />
 
-      {/* Connect Mode toggle + Remove Selected, top-left */}
+      {/* Toolbar top-left overlay */}
       <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 10, display: 'flex', gap: '8px' }}>
         <button
           onClick={handleToggleConnectMode}
@@ -291,7 +281,7 @@ function GraphCanvas({ initialNodes = [], initialEdges = [], onNodeClick, onNode
         />
       </ReactFlow>
 
-      {/* Bulk delete confirmation (nodes/edges selected via box/shift-click) */}
+      {/* Modals */}
       {showDeleteModal && (
         <Modal isOpen={showDeleteModal} title="Confirm Removal" onClose={() => setShowDeleteModal(false)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontFamily: theme.fonts.sans }}>
@@ -308,7 +298,6 @@ function GraphCanvas({ initialNodes = [], initialEdges = [], onNodeClick, onNode
         </Modal>
       )}
 
-      {/* Click-to-connect confirmation */}
       {pendingConnection && (
         <Modal isOpen={!!pendingConnection} title="Confirm New Connection" onClose={() => setPendingConnection(null)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontFamily: theme.fonts.sans }}>
@@ -328,7 +317,6 @@ function GraphCanvas({ initialNodes = [], initialEdges = [], onNodeClick, onNode
         </Modal>
       )}
 
-      {/* Edge-click delete confirmation */}
       {edgeToDelete && (
         <Modal isOpen={!!edgeToDelete} title="Remove Connection" onClose={() => setEdgeToDelete(null)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontFamily: theme.fonts.sans }}>

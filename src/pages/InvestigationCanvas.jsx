@@ -18,7 +18,6 @@ export default function InvestigationCanvas({
 }) {
   const [selectedNode, setSelectedNode] = useState(null);
   const [isTimelineView, setIsTimelineView] = useState(false);
-  const [filterType, setFilterType] = useState('All');
   
   // Resizable Layout States
   const [sidebarWidth, setSidebarWidth] = useState(360);
@@ -97,16 +96,11 @@ export default function InvestigationCanvas({
     }
   };
 
-  const filteredNodes =
-    filterType === 'All'
-      ? nodes
-      : nodes.filter((n) => n.data?.type === filterType);
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%', overflow: 'hidden' }}>
       
       {/* Header Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <div>
           <h1 style={{ color: theme.colors.textPrimary, margin: '0 0 4px 0', fontSize: '1.4rem', fontFamily: theme.fonts.sans }}>
             Active Investigation: Procurement Audit Q3 2026
@@ -181,7 +175,8 @@ export default function InvestigationCanvas({
         style={{
           display: 'flex',
           width: '100%',
-          height: '620px',
+          flex: 1,
+          minHeight: 0,
           position: 'relative',
           userSelect: isDragging ? 'none' : 'auto',
           overflow: 'hidden',
@@ -203,6 +198,7 @@ export default function InvestigationCanvas({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '12px',
+                boxSizing: 'border-box',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: `1px solid ${theme.colors.border}`, paddingBottom: '12px' }}>
@@ -212,7 +208,7 @@ export default function InvestigationCanvas({
                 </h3>
               </div>
 
-              {filteredNodes.map((n, idx) => (
+              {nodes.map((n, idx) => (
                 <div
                   key={n.id}
                   onClick={() => setSelectedNode(n)}
@@ -251,56 +247,14 @@ export default function InvestigationCanvas({
             </div>
           ) : (
             /* Standard Graph Canvas Mode */
-            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+            <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
               <GraphCanvas
-                initialNodes={filteredNodes}
+                initialNodes={nodes}
                 initialEdges={edges}
                 onNodesChangeParent={setNodes}
                 onEdgesChangeParent={setEdges}
                 onNodeClick={(node) => setSelectedNode(node)}
               />
-
-              {/* Floating Filter Pill: Pinned Top-Left right next to "Connect Nodes" */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '16px',
-                  left: '160px',
-                  zIndex: 10,
-                  backgroundColor: theme.colors.surface,
-                  border: `1px solid ${theme.colors.border}`,
-                  borderRadius: '6px',
-                  padding: '4px 8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-                }}
-              >
-                <span style={{ fontSize: '10px', fontWeight: 700, color: theme.colors.textMuted, textTransform: 'uppercase' }}>
-                  Filter:
-                </span>
-                <select
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                  style={{
-                    backgroundColor: theme.colors.bg,
-                    color: theme.colors.textPrimary,
-                    border: `1px solid ${theme.colors.border}`,
-                    borderRadius: '4px',
-                    padding: '2px 6px',
-                    fontSize: '11px',
-                    outline: 'none',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <option value="All">All Entities</option>
-                  <option value="Employee">Employees</option>
-                  <option value="Vendor">Vendors</option>
-                  <option value="Invoice">Invoices</option>
-                  <option value="Txn">Transactions</option>
-                </select>
-              </div>
             </div>
           )}
         </div>

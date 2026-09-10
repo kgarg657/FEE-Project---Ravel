@@ -25,7 +25,7 @@ const defaultEdges = [
 export default function App() {
   const [currentPath, setCurrentPath] = useState('/canvas');
 
-  // Persistent Canvas State with localStorage
+  // Persistent Canvas State
   const [nodes, setNodes] = useState(() => {
     const saved = localStorage.getItem('ravel_nodes');
     return saved ? JSON.parse(saved) : defaultNodes;
