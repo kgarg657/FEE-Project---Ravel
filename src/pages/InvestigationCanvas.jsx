@@ -15,6 +15,8 @@ export default function InvestigationCanvas({
   onApproveEdge,
   onRejectEdge,
   onAddEntity,
+  highlightedNodeIds = [],
+  onClearHighlights,
 }) {
   const [selectedNode, setSelectedNode] = useState(null);
   const [isTimelineView, setIsTimelineView] = useState(false);
@@ -25,16 +27,26 @@ export default function InvestigationCanvas({
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
 
-  // Esc Key Handler
+  // Esc Key Handler (Clears drawer & highlights)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setSelectedNode(null);
+        if (onClearHighlights) onClearHighlights();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [onClearHighlights]);
+
+  // Handle canvas background/node interactions
+  const handleNodeClick = (node) => {
+    setSelectedNode(node);
+    // Clear loop highlights once user clicks an individual node
+    if (onClearHighlights && highlightedNodeIds.length > 0) {
+      onClearHighlights();
+    }
+  };
 
   // Resizer Mouse Handlers
   const handleMouseDown = useCallback((e) => {
@@ -97,8 +109,15 @@ export default function InvestigationCanvas({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%', overflow: 'hidden' }}>
-      
+    <div
+      onClick={(e) => {
+        // Clear highlighted node ring when clicking anywhere on canvas container background
+        if (highlightedNodeIds.length > 0 && onClearHighlights && e.target === e.currentTarget) {
+          onClearHighlights();
+        }
+      }}
+      style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%', overflow: 'hidden' }}
+    >
       {/* Header Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <div>
@@ -208,42 +227,47 @@ export default function InvestigationCanvas({
                 </h3>
               </div>
 
-              {nodes.map((n, idx) => (
-                <div
-                  key={n.id}
-                  onClick={() => setSelectedNode(n)}
-                  style={{
-                    backgroundColor: theme.colors.surface,
-                    border: `1px solid ${theme.colors.border}`,
-                    borderRadius: '6px',
-                    padding: '12px 16px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '11px', color: theme.colors.accent, fontWeight: 700 }}>
-                      #0{idx + 1}
-                    </span>
-                    <div>
-                      <strong style={{ color: theme.colors.textPrimary, display: 'block', fontSize: '13px' }}>
-                        {n.data?.label}
-                      </strong>
-                      <span style={{ fontSize: '11px', color: theme.colors.textMuted }}>
-                        Category: {n.data?.type}
+              {nodes.map((n, idx) => {
+                const isHighlighted = highlightedNodeIds.includes(String(n.id));
+                return (
+                  <div
+                    key={n.id}
+                    onClick={() => handleNodeClick(n)}
+                    style={{
+                      backgroundColor: isHighlighted ? `${theme.colors.accent}22` : theme.colors.surface,
+                      border: isHighlighted ? `2px solid ${theme.colors.accent}` : `1px solid ${theme.colors.border}`,
+                      boxShadow: isHighlighted ? `0 0 12px ${theme.colors.accent}` : 'none',
+                      borderRadius: '6px',
+                      padding: '12px 16px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '11px', color: theme.colors.accent, fontWeight: 700 }}>
+                        #0{idx + 1}
                       </span>
+                      <div>
+                        <strong style={{ color: theme.colors.textPrimary, display: 'block', fontSize: '13px' }}>
+                          {n.data?.label}
+                        </strong>
+                        <span style={{ fontSize: '11px', color: theme.colors.textMuted }}>
+                          Category: {n.data?.type}
+                        </span>
+                      </div>
                     </div>
-                  </div>
 
-                  {n.data?.amount && (
-                    <span style={{ color: theme.colors.critical, fontWeight: 700, fontSize: '13px' }}>
-                      ${parseFloat(n.data.amount).toLocaleString()}
-                    </span>
-                  )}
-                </div>
-              ))}
+                    {n.data?.amount && (
+                      <span style={{ color: theme.colors.critical, fontWeight: 700, fontSize: '13px' }}>
+                        ${parseFloat(n.data.amount).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             /* Standard Graph Canvas Mode */
@@ -253,7 +277,8 @@ export default function InvestigationCanvas({
                 initialEdges={edges}
                 onNodesChangeParent={setNodes}
                 onEdgesChangeParent={setEdges}
-                onNodeClick={(node) => setSelectedNode(node)}
+                onNodeClick={(node) => handleNodeClick(node)}
+                highlightedNodeIds={highlightedNodeIds} /* FIXED: Passed down highlightedNodeIds */
               />
             </div>
           )}

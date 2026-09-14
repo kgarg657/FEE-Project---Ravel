@@ -20,7 +20,15 @@ import theme from '../theme';
 const nodeTypes = { entityNode: EntityNode };
 const edgeTypes = { edgeBadge: EdgeBadge };
 
-function GraphCanvas({ initialNodes = [], initialEdges = [], onNodeClick, onNodesChangeParent, onEdgesChangeParent }) {
+function GraphCanvas({
+  initialNodes = [],
+  initialEdges = [],
+  onNodeClick,
+  onNodesChangeParent,
+  onEdgesChangeParent,
+  /* ADDED: Prop to receive array of node IDs to highlight from Analytics navigation */
+  highlightedNodeIds = [],
+}) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedElements, setSelectedElements] = useState([]);
@@ -165,13 +173,34 @@ function GraphCanvas({ initialNodes = [], initialEdges = [], onNodeClick, onNode
   const edgeToDeleteInfo = edges.find((e) => e.id === edgeToDelete);
   const sourceNodeLabel = (id) => nodes.find((n) => n.id === id)?.data?.label || id;
 
-  const displayNodes = nodes.map((n) => ({
-    ...n,
-    style:
-      n.id === connectSourceId
-        ? { ...(n.style || {}), boxShadow: `0 0 0 4px ${theme.colors.accent}`, borderRadius: '50%' }
-        : n.style,
-  }));
+  /* MODIFIED: Updated displayNodes mapping to inject highlight styling if node ID is in highlightedNodeIds */
+  const displayNodes = nodes.map((n) => {
+    const isConnectSource = n.id === connectSourceId;
+    const isHighlighted = highlightedNodeIds.includes(String(n.id));
+
+    let updatedStyle = { ...(n.style || {}) };
+
+    if (isConnectSource) {
+      updatedStyle = {
+        ...updatedStyle,
+        boxShadow: `0 0 0 4px ${theme.colors.accent}`,
+        borderRadius: '50%',
+      };
+    } else if (isHighlighted) {
+      /* Dynamic cyan glow & border for highlighted cycle/path nodes */
+      updatedStyle = {
+        ...updatedStyle,
+        border: `2px solid ${theme.colors.accent}`,
+        boxShadow: `0 0 16px ${theme.colors.accent}`,
+        borderRadius: '8px',
+      };
+    }
+
+    return {
+      ...n,
+      style: updatedStyle,
+    };
+  });
 
   return (
     <div
