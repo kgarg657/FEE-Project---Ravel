@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import Card from './Card';
 import Button from './Button';
 import theme from '../theme';
@@ -22,9 +23,16 @@ function PendingLinkSuggestions({ suggestions = [], onApprove, onReject, onRunAI
             variant="secondary"
             onClick={handleRunAI}
             disabled={isAnalyzing}
-            style={{ fontSize: '11px', padding: '4px 8px' }}
+            style={{ 
+              fontSize: '11px', 
+              padding: '4px 8px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}
           >
-            {isAnalyzing ? 'Scanning...' : '⚡ Run AI Scan'}
+            <Sparkles size={13} style={{ color: theme.colors.accent }} />
+            {isAnalyzing ? 'Scanning...' : 'Run AI Scan'}
           </Button>
         </div>
       }
@@ -48,7 +56,7 @@ function PendingLinkSuggestions({ suggestions = [], onApprove, onReject, onRunAI
               fontFamily: theme.fonts.sans,
             }}
           >
-            No pending suggestions. Click <strong>⚡ Run AI Scan</strong> to discover hidden links.
+            No pending suggestions. Click <Sparkles size={12} style={{ color: theme.colors.accent, verticalAlign: 'middle', margin: '0 2px' }} /> <strong>Run AI Scan</strong> to discover hidden links.
           </p>
         ) : (
           suggestions.map((item) => (

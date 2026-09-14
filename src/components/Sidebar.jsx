@@ -22,16 +22,18 @@ function Sidebar({ currentPath = '/entities', onNavigate }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Clean collapse toggle resetting hover state simultaneously
   const handleCollapse = () => {
     setIsHovered(false);
     setIsCollapsed(true);
   };
 
-  // Clean expand toggle resetting hover state
   const handleExpand = () => {
     setIsHovered(false);
     setIsCollapsed(false);
+  };
+
+  const handleLogoClick = () => {
+    if (onNavigate) onNavigate('/');
   };
 
   return (
@@ -61,7 +63,6 @@ function Sidebar({ currentPath = '/entities', onNavigate }) {
         }}
       >
         {isCollapsed ? (
-          /* CLOSED SIDEBAR: Show ONLY Logo icon box. Swap to 3-lines on hover. */
           <div
             onClick={handleExpand}
             onMouseEnter={() => setIsHovered(true)}
@@ -80,19 +81,18 @@ function Sidebar({ currentPath = '/entities', onNavigate }) {
             title="Expand sidebar"
           >
             {isHovered ? (
-              /* Hovered state: 3-lines menu icon */
               <Menu size={22} color={theme.colors.accent} />
             ) : (
-              /* Normal state: Clipped logo so ONLY the icon symbol shows */
               <div style={{ width: '32px', height: '32px', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
                 <Logo iconSize={32} scale={1.8} fontSize={20} />
               </div>
             )}
           </div>
         ) : (
-          /* OPEN SIDEBAR: Both Logo and Menu icon sit independently side-by-side */
           <>
-            <Logo iconSize={32} scale={1.8} fontSize={20} />
+            <div onClick={handleLogoClick} style={{ cursor: 'pointer' }} title="Go to Landing Page">
+              <Logo iconSize={32} scale={1.8} fontSize={20} />
+            </div>
             
             <button
               onClick={handleCollapse}

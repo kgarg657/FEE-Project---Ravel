@@ -20,6 +20,7 @@ const LoginPage = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [userFullName, setUserFullName] = useState('');
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -79,13 +80,15 @@ const LoginPage = () => {
       localStorage.removeItem('ravel_keep_logged_in');
     }
 
+    setUserFullName(registeredUser.fullName || 'Auditor');
+
     setTimeout(() => {
       setIsSubmitting(false);
       setIsLoggedIn(true);
 
       setTimeout(() => {
-        navigate('/entities');
-      }, 1200);
+        navigate('/investigations/1');
+      }, 1400);
     }, 500);
   };
 
@@ -123,8 +126,8 @@ const LoginPage = () => {
         {isLoggedIn ? (
           <div className="success-screen">
             <div className="success-icon">✓</div>
-            <h2>Login Successful!</h2>
-            <p>Redirecting to dashboard...</p>
+            <h2>Welcome back, {userFullName}!</h2>
+            <p>Loading Investigation Canvas...</p>
           </div>
         ) : (
           <form onSubmit={handleFormSubmit} className="login-form">

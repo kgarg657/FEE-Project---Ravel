@@ -5,6 +5,13 @@ import theme from '../theme';
 function Navbar({ onLogout }) {
   const [isHovered, setIsHovered] = useState(false);
 
+  const handleLogoutClick = () => {
+    localStorage.removeItem('ravel_user');
+    if (onLogout) {
+      onLogout();
+    }
+  };
+
   return (
     <div
       style={{
@@ -13,12 +20,11 @@ function Navbar({ onLogout }) {
         borderBottom: `1px solid ${theme.colors.border}`,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'flex-end', // Aligns user info and log out to the far right
+        justifyContent: 'flex-end',
         padding: '0 24px',
         boxSizing: 'border-box',
       }}
     >
-      {/* Right Action Cluster */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
         
         {/* User Identity Pill */}
@@ -42,9 +48,9 @@ function Navbar({ onLogout }) {
           </span>
         </div>
 
-        {/* Clickable Log Out Button with Hover Transition */}
+        {/* Clickable Log Out Button */}
         <button
-          onClick={onLogout}
+          onClick={handleLogoutClick}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           style={{

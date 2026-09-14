@@ -11,13 +11,11 @@ function MainLayout({ children, currentPath, onNavigate, onLogout }) {
         height: '100vh',
         width: '100vw',
         backgroundColor: theme.colors.bg,
-        overflow: 'hidden', // Prevents the whole screen from scrolling unexpectedly
+        overflow: 'hidden',
       }}
     >
-      
       <Sidebar currentPath={currentPath} onNavigate={onNavigate} />
 
-      {/* Main Workspace Area (Navbar + Scrollable Page Content) */}
       <div
         style={{
           flex: 1,
@@ -27,15 +25,13 @@ function MainLayout({ children, currentPath, onNavigate, onLogout }) {
           height: '100vh',
         }}
       >
-        {/* Top Navbar */}
         <Navbar onLogout={onLogout} />
 
-        {/* Dynamic Page Content (Renders whichever page is active) */}
         <main
           style={{
             flex: 1,
             padding: '24px 32px',
-            overflowY: 'auto', // Enables smooth page scrolling while Keeping Navbar fixed
+            overflowY: 'auto',
             boxSizing: 'border-box',
           }}
         >

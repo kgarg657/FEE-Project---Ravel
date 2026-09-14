@@ -1,13 +1,17 @@
-// src/App.jsx
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
+import Landing from './pages/Landing';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
 import InvestigationCanvas from './pages/InvestigationCanvas';
 import Analytics from './pages/Analytics';
 import EntityRegistry from './pages/EntityRegistry';
 import { initialNodes, initialEdges } from './data/mockData';
 
 export default function App() {
-  const [currentPath, setCurrentPath] = useState('/canvas');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [highlightedNodeIds, setHighlightedNodeIds] = useState([]);
 
   const [nodes, setNodes] = useState(() => {
@@ -36,7 +40,6 @@ export default function App() {
     localStorage.setItem('ravel_edges', JSON.stringify(edges));
   }, [edges]);
 
-  // Handler Functions
   const handleApproveEdge = (edgeId) => {
     setEdges((prev) =>
       prev.map((edge) =>
@@ -83,41 +86,104 @@ export default function App() {
 
   const handleNavigateToGraph = (path, nodeIds = []) => {
     setHighlightedNodeIds(nodeIds);
-    setCurrentPath(path);
+    navigate(path);
+  };
+
+  const handleNavigate = (path) => {
+    navigate(path);
+  };
+
+  const handleLogout = () => {
+    navigate('/login');
   };
 
   return (
-    <MainLayout currentPath={currentPath} onNavigate={(path) => setCurrentPath(path)}>
-      {(currentPath === '/canvas' || currentPath === '/investigations/1') && (
-        <InvestigationCanvas
-          nodes={nodes}
-          edges={edges}
-          setNodes={setNodes}
-          setEdges={setEdges}
-          onApproveEdge={handleApproveEdge}
-          onRejectEdge={handleRejectEdge}
-          onAddEntity={handleAddEntity}
-          highlightedNodeIds={highlightedNodeIds}
-          onClearHighlights={() => setHighlightedNodeIds([])}
-        />
-      )}
+    <Routes>
+      {/* Standalone Public Pages */}
+      <Route path="/" element={<Landing onNavigate={handleNavigate} />} />
+      <Route path="/landing" element={<Landing onNavigate={handleNavigate} />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
 
-      {currentPath === '/analytics' && (
-        <Analytics
-          nodes={nodes}
-          edges={edges}
-          onNavigateToGraph={handleNavigateToGraph}
-        />
-      )}
+      {/* Internal Protected Pages */}
+      <Route
+        path="/canvas"
+        element={
+          <MainLayout currentPath={location.pathname} onNavigate={handleNavigate} onLogout={handleLogout}>
+            <InvestigationCanvas
+              nodes={nodes}
+              edges={edges}
+              setNodes={setNodes}
+              setEdges={setEdges}
+              onApproveEdge={handleApproveEdge}
+              onRejectEdge={handleRejectEdge}
+              onAddEntity={handleAddEntity}
+              highlightedNodeIds={highlightedNodeIds}
+              onClearHighlights={() => setHighlightedNodeIds([])}
+            />
+          </MainLayout>
+        }
+      />
 
-      {(currentPath === '/registry' || currentPath === '/entities') && (
-        <EntityRegistry
-          nodes={nodes}
-          edges={edges}
-          onAddEntity={handleAddEntity}
-          onNavigateToGraph={handleNavigateToGraph}
-        />
-      )}
-    </MainLayout>
+      <Route
+        path="/investigations/1"
+        element={
+          <MainLayout currentPath="/investigations/1" onNavigate={handleNavigate} onLogout={handleLogout}>
+            <InvestigationCanvas
+              nodes={nodes}
+              edges={edges}
+              setNodes={setNodes}
+              setEdges={setEdges}
+              onApproveEdge={handleApproveEdge}
+              onRejectEdge={handleRejectEdge}
+              onAddEntity={handleAddEntity}
+              highlightedNodeIds={highlightedNodeIds}
+              onClearHighlights={() => setHighlightedNodeIds([])}
+            />
+          </MainLayout>
+        }
+      />
+
+      <Route
+        path="/analytics"
+        element={
+          <MainLayout currentPath={location.pathname} onNavigate={handleNavigate} onLogout={handleLogout}>
+            <Analytics
+              nodes={nodes}
+              edges={edges}
+              onNavigateToGraph={handleNavigateToGraph}
+            />
+          </MainLayout>
+        }
+      />
+
+      <Route
+        path="/registry"
+        element={
+          <MainLayout currentPath={location.pathname} onNavigate={handleNavigate} onLogout={handleLogout}>
+            <EntityRegistry
+              nodes={nodes}
+              edges={edges}
+              onAddEntity={handleAddEntity}
+              onNavigateToGraph={handleNavigateToGraph}
+            />
+          </MainLayout>
+        }
+      />
+
+      <Route
+        path="/entities"
+        element={
+          <MainLayout currentPath="/entities" onNavigate={handleNavigate} onLogout={handleLogout}>
+            <EntityRegistry
+              nodes={nodes}
+              edges={edges}
+              onAddEntity={handleAddEntity}
+              onNavigateToGraph={handleNavigateToGraph}
+            />
+          </MainLayout>
+        }
+      />
+    </Routes>
   );
 }

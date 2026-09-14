@@ -21,14 +21,23 @@ export default function SpendAnomalyChart({ nodes = [], onSelectOutlier }) {
 
   // 1. Compute dynamic financial time series & statistical bounds
   const { chartData, anomalyPoint } = useMemo(() => {
-    // Extract nodes that have financial values
+    // Helper function to safely extract numbers from strings like "₹ 8,50,000" or "45000"
+    const parseAmount = (raw) => {
+      if (!raw) return NaN;
+      if (typeof raw === 'number') return raw;
+      const cleaned = String(raw).replace(/[^0-9.]/g, '');
+      return parseFloat(cleaned);
+    };
+
+    // Extract nodes that have valid financial values
     const financialNodes = nodes
-      .filter((n) => n.data?.amount && !isNaN(parseFloat(n.data.amount)))
-      .map((n, idx) => ({
-        id: n.id,
-        label: n.data.label || `Item #${n.id}`,
-        amount: parseFloat(n.data.amount) / 1000, // converted to $k
-        date: n.data.date || `2026-0${(idx % 4) + 1}-10`,
+      .map((n) => ({ node: n, val: parseAmount(n.data?.amount) }))
+      .filter((item) => !isNaN(item.val) && item.val > 0)
+      .map((item, idx) => ({
+        id: item.node.id,
+        label: item.node.data.label || `Item #${item.node.id}`,
+        amount: Math.round(item.val / 1000), // convert to thousands
+        date: item.node.data.date || `2026-0${(idx % 4) + 1}-${10 + idx}`,
       }))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -42,15 +51,16 @@ export default function SpendAnomalyChart({ nodes = [], onSelectOutlier }) {
     const variance = amounts.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / amounts.length;
     const stdDev = Math.sqrt(variance);
 
-    // Dynamic threshold: Mean + 1.25 * StdDev (or fallback to $50k if small variance)
-    const dynamicThreshold = Math.round(mean + Math.max(stdDev * 1.25, 15));
+    // Dynamic threshold limit
+    const dynamicThreshold = Math.round(mean + Math.max(stdDev * 1.1, 20));
 
     let detectedAnomaly = null;
 
-    const data = financialNodes.map((item) => {
-      const isAnomaly = item.amount > dynamicThreshold;
+    const data = financialNodes.map((item, index) => {
+      const isAnomaly = item.amount >= dynamicThreshold;
       const point = {
-        time: item.date.slice(5), // e.g. "01-15"
+        // Ensure unique time label if multiple items share identical dates
+        time: `${item.date.slice(5)} (${index + 1})`,
         spend: item.amount,
         upperBound: dynamicThreshold,
         anomaly: isAnomaly ? item.label : undefined,
@@ -72,7 +82,7 @@ export default function SpendAnomalyChart({ nodes = [], onSelectOutlier }) {
       const insight = await aiService.explainSpendOutlier(point);
       setExplanation(insight);
     } catch {
-      setExplanation(`${point.anomaly} breached standard deviation thresholds ($${point.spend}k vs $${point.upperBound}k limit).`);
+      setExplanation(`${point.anomaly} breached standard deviation thresholds (${point.spend}k vs ${point.upperBound}k limit).`);
     } finally {
       setIsExplaining(false);
     }
@@ -89,47 +99,53 @@ export default function SpendAnomalyChart({ nodes = [], onSelectOutlier }) {
         </p>
       </div>
 
-      <div style={{ width: '100%', height: '320px', minWidth: 0, marginTop: '4px' }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 24, right: 30, left: 0, bottom: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={theme.colors.border} vertical={false} />
-            <XAxis dataKey="time" stroke={theme.colors.textMuted} fontSize={11} tickLine={false} axisLine={{ stroke: theme.colors.border }} />
-            <YAxis stroke={theme.colors.textMuted} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}k`} />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: theme.colors.bg,
-                borderColor: theme.colors.border,
-                borderRadius: '6px',
-                color: theme.colors.textPrimary,
-                fontSize: '12px',
-              }}
-            />
-            <Line type="monotone" dataKey="upperBound" stroke={theme.colors.critical} strokeDasharray="5 5" dot={false} strokeWidth={1.5} name="Std Dev Limit" />
-            <Line type="monotone" dataKey="spend" stroke={theme.colors.accent} strokeWidth={2.5} dot={{ r: 5, fill: theme.colors.accent, strokeWidth: 0 }} activeDot={{ r: 7 }} name="Spend ($k)" />
-
-            {anomalyPoint && (
-              <ReferenceDot
-                x={anomalyPoint.time}
-                y={anomalyPoint.spend}
-                r={7}
-                fill={theme.colors.critical}
-                stroke="#ffffff"
-                strokeWidth={2}
-                style={{ cursor: 'pointer' }}
-                onClick={() => handleOutlierClick(anomalyPoint)}
-                label={{
-                  value: anomalyPoint.anomaly,
-                  position: 'top',
-                  fill: theme.colors.critical,
-                  fontSize: 11,
-                  fontWeight: 'bold',
-                  dy: -8,
+      {chartData.length === 0 ? (
+        <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.colors.textMuted, fontSize: '12px' }}>
+          No valid invoice/transaction financial data found in current active nodes.
+        </div>
+      ) : (
+        <div style={{ width: '100%', height: '320px', minHeight: '320px', marginTop: '4px' }}>
+          <ResponsiveContainer width="100%" height={320}>
+            <LineChart data={chartData} margin={{ top: 24, right: 30, left: 0, bottom: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.colors.border} vertical={false} />
+              <XAxis dataKey="time" stroke={theme.colors.textMuted} fontSize={11} tickLine={false} axisLine={{ stroke: theme.colors.border }} />
+              <YAxis stroke={theme.colors.textMuted} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val}k`} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: theme.colors.bg,
+                  borderColor: theme.colors.border,
+                  borderRadius: '6px',
+                  color: theme.colors.textPrimary,
+                  fontSize: '12px',
                 }}
               />
-            )}
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+              <Line type="monotone" dataKey="upperBound" stroke={theme.colors.critical} strokeDasharray="5 5" dot={false} strokeWidth={1.5} name="Std Dev Limit" />
+              <Line type="monotone" dataKey="spend" stroke={theme.colors.accent} strokeWidth={2.5} dot={{ r: 5, fill: theme.colors.accent, strokeWidth: 0 }} activeDot={{ r: 7 }} name="Spend (k)" />
+
+              {anomalyPoint && (
+                <ReferenceDot
+                  x={anomalyPoint.time}
+                  y={anomalyPoint.spend}
+                  r={7}
+                  fill={theme.colors.critical}
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => handleOutlierClick(anomalyPoint)}
+                  label={{
+                    value: anomalyPoint.anomaly,
+                    position: 'top',
+                    fill: theme.colors.critical,
+                    fontSize: 11,
+                    fontWeight: 'bold',
+                    dy: -8,
+                  }}
+                />
+              )}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {(isExplaining || explanation) && (
         <div
