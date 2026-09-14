@@ -1,5 +1,9 @@
 # 🕸️ Ravel - Forensic Audit & Relationship Mapping Platform
 
+> 🚀 **Live Demo:** [https://fee-project-ravel.vercel.app/](https://fee-project-ravel.vercel.app/)
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://your-app-name.vercel.app)
+
 ## Project Overview
 
 Ravel is an internal forensic investigation and relationship-mapping platform built for financial intelligence teams and corporate auditors. Modern corporate fraud rarely happens in plain sight—it hides inside fragmented SQL tables, disconnected spreadsheets, and multi-layered approval chains.
