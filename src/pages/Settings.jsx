@@ -13,30 +13,35 @@ import ColorPicker from '../components/ColorPicker';
 import Input from '../components/Input';
 import Modal from '../components/Modal';
 import theme from '../theme';
+
 export default function Settings() {
     const [leftTab, setLeftTab] = useState('general');
     const [centerTab, setCenterTab] = useState('analytical');
     const [profile, setProfile] = useState({ name: 'J. Doe', role: 'Senior Auditor', email: 'J.Doe@ravel.io' });
-    // Increased default font size from 14 to 18 for better readability
-    const [display, setDisplay] = useState({ dark: true, color: '#06b6d4', font: 18 });
+    const [display, setDisplay] = useState({ dark: true, color: '#06b6d4', font: 14 });
     const [notifs, setNotifs] = useState({ cases: false, critical: false, suggestions: false, email: true, inApp: false });
     const [pwdModal, setPwdModal] = useState(false);
     const [page, setPage] = useState(1);
+    
     // Password change states for validation
     const [currentPwd, setCurrentPwd] = useState('');
     const [newPwd, setNewPwd] = useState('');
     const [confirmPwd, setConfirmPwd] = useState('');
     const isPasswordValid = currentPwd.trim() !== '' && newPwd.trim() !== '' && confirmPwd.trim() !== '' && newPwd === confirmPwd;
+
     const [rules, setRules] = useState([
         { id: 'RU_01', type: 'GST Match', desc: 'Match GST registration across employees & vendors.', level: 'High', val: 80, risk: <Badge variant="critical">Critical</Badge>, date: '12/07/2026', active: true },
         { id: 'RU_02', type: 'Circular Loop', desc: 'Detect recursive loops in payment approvals (Recursive CTE).', level: 'Medium', val: 50, risk: <Badge variant="flagged">High</Badge>, date: '10/05/2026', active: true },
         { id: 'RU_03', type: 'Fuzzy Name', desc: 'Use fuzzy logic for near-duplicate entity detection.', level: 'Low', val: 30, risk: <Badge variant="suggested">Medium</Badge>, date: '12/07/2026', active: true },
         { id: 'RU_04', type: 'Timeline Gaps', desc: 'Find time anomalies between payment and approval.', level: 'Medium', val: 60, risk: <Badge variant="flagged">High</Badge>, date: '12/06/2026', active: false },
     ]);
+
     const updateRule = (id, key, val) => {
         setRules(prev => prev.map(r => r.id === id ? { ...r, [key]: val } : r));
     };
+
     const paginatedRules = rules.slice((page - 1) * 4, page * 4);
+
     const columns = [
         { header: 'Rule ID', accessor: 'id', type: 'link', className: 'w-[75px]' },
         { header: 'Type', accessor: 'type', className: 'w-[85px]' },
@@ -44,12 +49,12 @@ export default function Settings() {
             header: 'Description',
             accessor: 'desc',
             className: 'w-[160px] max-w-[160px] whitespace-normal break-words',
-            render: t => <span style={{ fontSize: `${display.font * 0.8}px` }} className="text-gray-300 leading-snug block w-[150px] whitespace-normal break-words">{t}</span>
+            render: t => <span style={{ fontSize: `${display.font * 0.85}px` }} className="text-gray-300 leading-snug block w-[150px] whitespace-normal break-words">{t}</span>
         },
         {
             header: 'Sensitivity', accessor: 'level', className: 'w-[100px]', render: (l, row) => (
                 <div className="flex flex-col gap-1 min-w-[75px]">
-                    <span style={{ fontSize: `${display.font * 0.8}px` }}>{l}</span>
+                    <span style={{ fontSize: `${display.font * 0.85}px` }}>{l}</span>
                     <div style={{ accentColor: display.color }}>
                         <Slider min={0} max={100} value={row.val} onChange={v => updateRule(row.id, 'val', v)} />
                     </div>
@@ -57,11 +62,11 @@ export default function Settings() {
             )
         },
         { header: 'Associated Risk', accessor: 'risk', className: 'w-[95px]' },
-        { header: 'Last Updated', accessor: 'date', className: 'w-[90px]', render: d => <span className="text-gray-400 font-mono" style={{ fontSize: `${display.font * 0.8}px` }}>{d}</span> },
+        { header: 'Last Updated', accessor: 'date', className: 'w-[90px]', render: d => <span className="text-gray-400 font-mono" style={{ fontSize: `${display.font * 0.85}px` }}>{d}</span> },
         {
             header: 'Status', accessor: 'active', className: 'w-[70px]', render: (st, row) => (
                 <div className="flex justify-end items-center gap-1.5">
-                    <span className="text-gray-300" style={{ fontSize: `${display.font * 0.8}px` }}>{st ? 'On' : 'Off'}</span>
+                    <span className="text-gray-300" style={{ fontSize: `${display.font * 0.85}px` }}>{st ? 'On' : 'Off'}</span>
                     <div style={{ accentColor: display.color }}>
                         <ToggleSwitch size="sm" checked={st} onChange={v => updateRule(row.id, 'active', v)} />
                     </div>
@@ -69,6 +74,7 @@ export default function Settings() {
             )
         }
     ];
+
     return (
         <div
             className="p-4 md:p-5 pb-16 flex flex-col gap-3 w-full min-h-screen select-none box-border"
@@ -78,11 +84,17 @@ export default function Settings() {
                 fontFamily: theme.fonts.sans,
                 fontSize: `${display.font}px`
             }} >
-            {/* Title positioned at top-left corner */}
-            <div className="flex flex-col items-start self-start w-full">
-                <h1 className="font-bold tracking-normal m-0 p-0 leading-tight" style={{ fontSize: `${display.font * 3.5}px`, color: display.dark ? '#ffffff' : '#0f172a' }}>Platform Settings & Configurations</h1>
-                <p className="font-medium mt-1 mb-0" style={{ fontSize: `${display.font * 1.3}px`, color: display.dark ? '#d1d5db' : '#475569' }}>Logged in: J. Doe (Senior Auditor)</p>
+            
+            {/* Standard Header Component Aligned with Case Management */}
+            <div className="flex flex-col items-start self-start w-full mb-1">
+                <h1 className="font-bold tracking-tight m-0 p-0 leading-tight" style={{ fontSize: '1.4rem', color: display.dark ? '#ffffff' : '#0f172a' }}>
+                    Platform Settings & Configurations
+                </h1>
+                <p className="font-normal mt-1 mb-0" style={{ fontSize: '0.85rem', color: display.dark ? '#94a3b8' : '#475569' }}>
+                    Logged in: J. Doe (Senior Auditor)
+                </p>
             </div>
+
             {/* Main 3-Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start w-full">
                 {/* COLUMN 1: Left Navigation & Compact Settings Blocks */}
@@ -113,10 +125,10 @@ export default function Settings() {
                         <div className="flex flex-col gap-2" style={{ accentColor: display.color, fontSize: `${display.font}px` }}>
                             <ToggleSwitch label="Dark Mode" checked={display.dark} onChange={v => setDisplay({ ...display, dark: v })} />
                             <ColorPicker label="Primary Accent Color" value={display.color} onChange={v => setDisplay({ ...display, color: v })} />
-                            {/* Expanded font size range from [12, 20] to [14, 24] */}
-                            <Slider label="Font Size" min={14} max={24} value={display.font} onChange={v => setDisplay({ ...display, font: v })} />
+                            <Slider label="Font Size" min={12} max={20} value={display.font} onChange={v => setDisplay({ ...display, font: v })} />
                         </div>
                     </Card>
+
                     <Card title="Notification Settings" padding="8px 6px">
                         <div className="flex flex-col gap-1.5" style={{ accentColor: display.color, fontSize: `${display.font}px` }}>
                             <Checkbox id="nc" label="New Case Alerts" checked={notifs.cases} onChange={v => setNotifs({ ...notifs, cases: v })} />
@@ -141,7 +153,8 @@ export default function Settings() {
                         </div>
                     </Card>
                 </div>
-                {/* COLUMN 3: Right Summary & Audit Cards aligned immediately below divider */}
+
+                {/* COLUMN 3: Right Summary & Audit Cards */}
                 <div className="lg:col-span-3 flex flex-col gap-2.5">
                     <Card title="System Configuration Summary" padding="9px">
                         <div className="flex flex-col gap-2" style={{ fontSize: `${display.font}px` }}>
@@ -151,6 +164,7 @@ export default function Settings() {
                             <div className="flex justify-between"><span className="text-gray-400">Audit Logs:</span><span className="font-semibold" style={{ color: display.color }}>1540 (Active)</span></div>
                         </div>
                     </Card>
+
                     <Card title="Rule Performance Overview" padding="9px">
                         <div className="flex flex-col gap-2" style={{ fontSize: `${display.font}px` }}>
                             <div className="flex justify-between items-center">
@@ -165,6 +179,7 @@ export default function Settings() {
                             </div>
                         </div>
                     </Card>
+
                     <Card title="System Audit Trail" padding="9px">
                         <div className="flex flex-col justify-between" style={{ minHeight: '94px', fontSize: `${display.font}px` }}>
                             <ul className="flex flex-col gap-1 text-gray-400" style={{ fontSize: `${display.font * 0.85}px` }}>
@@ -174,7 +189,7 @@ export default function Settings() {
                             </ul>
                             <div className="flex items-center gap-1 text-gray-400 justify-end border-t pt-1 mt-1 border-gray-800" style={{ fontSize: `${display.font * 0.85}px` }}>
                                 <button type="button" className="px-1 hover:text-white">&lt;</button>
-                                <button type="button" className="px-1.5 py-0.5 rounded bg-gray-800 text-white" style={{ fontSize: `${display.font * 0.75}px`, backgroundColor: display.color }}>1</button>
+                                <button type="button" className="px-1.5 py-0.5 rounded text-white" style={{ fontSize: `${display.font * 0.75}px`, backgroundColor: display.color }}>1</button>
                                 <button type="button" className="px-1.5 hover:text-white">2</button>
                                 <button type="button" className="px-1.5 hover:text-white">3</button>
                                 <span>16</span>
@@ -183,13 +198,14 @@ export default function Settings() {
                         </div>
                     </Card>
                 </div>
-
             </div>
-            {/* Fixed Pagination Section at the Bottom of the Viewport */}
+
+            {/* Fixed Pagination Section at the Bottom */}
             <div className="fixed bottom-0 left-0 right-0 z-50 px-4 md:px-5 py-2.5 flex justify-between items-center text-gray-400 border-t border-gray-800 shadow-lg" style={{ backgroundColor: display.dark ? theme.colors.bg : '#ffffff', fontSize: `${display.font}px` }}>
                 <span>1-2 next</span>
                 <Pagination currentPage={page} totalPages={2} onPageChange={setPage} itemsPerPage={4} totalItems={rules.length} />
             </div>
+
             {/* Password Modal */}
             <Modal isOpen={pwdModal} onClose={() => { setPwdModal(false); setCurrentPwd(''); setNewPwd(''); setConfirmPwd(''); }} title="Change Account Password" width="420px">
                 <form onSubmit={e => {

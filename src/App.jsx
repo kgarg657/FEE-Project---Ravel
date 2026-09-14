@@ -7,6 +7,8 @@ import SignupPage from './pages/SignupPage';
 import InvestigationCanvas from './pages/InvestigationCanvas';
 import Analytics from './pages/Analytics';
 import EntityRegistry from './pages/EntityRegistry';
+import CaseManagement from './pages/CaseManagement';
+import Settings from './pages/Settings';
 import { initialNodes, initialEdges } from './data/mockData';
 
 export default function App() {
@@ -181,6 +183,26 @@ export default function App() {
               onAddEntity={handleAddEntity}
               onNavigateToGraph={handleNavigateToGraph}
             />
+          </MainLayout>
+        }
+      />
+
+      {/* Case Management Route */}
+      <Route
+        path="/cases"
+        element={
+          <MainLayout currentPath={location.pathname} onNavigate={handleNavigate} onLogout={handleLogout}>
+            <CaseManagement onNavigate={handleNavigate} />
+          </MainLayout>
+        }
+      />
+
+      {/* Settings Route */}
+      <Route
+        path="/settings"
+        element={
+          <MainLayout currentPath={location.pathname} onNavigate={handleNavigate} onLogout={handleLogout}>
+            <Settings />
           </MainLayout>
         }
       />
