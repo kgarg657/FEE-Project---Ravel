@@ -4,6 +4,7 @@ import {
   ArrowLeftRight,
   Building2,
   CircleDot,
+  CircleDollarSign,
   FileText,
   ReceiptText,
   ShieldAlert,
@@ -14,9 +15,9 @@ const iconByType = {
   account: CircleDot,
   employee: UserRound,
   vendor: Building2,
-  invoice: ReceiptText,
-  transaction: ArrowLeftRight,
-  txn: ArrowLeftRight,
+  invoice: FileText,
+  transaction: CircleDollarSign,
+  txn: CircleDollarSign,
   shell: ShieldAlert,
   flagged: ShieldAlert,
   critical: ShieldAlert,
@@ -30,8 +31,10 @@ function EntityNode({ data, selected }) {
     ? 'blue'
     : ['vendor'].includes(normalizedType)
       ? 'green'
-      : ['invoice', 'transaction', 'txn'].includes(normalizedType)
+      : ['invoice'].includes(normalizedType)
         ? 'amber'
+        : ['transaction', 'txn'].includes(normalizedType)
+          ? 'violet'
         : ['shell', 'flagged', 'critical'].includes(normalizedType) ? 'red' : 'slate';
   const Icon = iconByType[normalizedType] || FileText;
 
