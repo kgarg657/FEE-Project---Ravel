@@ -2,26 +2,25 @@ import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import {
   ArrowLeftRight,
-  Building2,
-  CircleDot,
-  CircleDollarSign,
-  FileText,
-  ReceiptText,
+  BadgeDollarSign,
+  Landmark,
+  Store,
+  FileCheck2,
   ShieldAlert,
   UserRound,
 } from 'lucide-react';
 
 const iconByType = {
-  account: CircleDot,
+  account: Landmark,
   employee: UserRound,
-  vendor: Building2,
-  invoice: FileText,
-  transaction: CircleDollarSign,
-  txn: CircleDollarSign,
+  vendor: Store,
+  invoice: FileCheck2,
+  transaction: ArrowLeftRight,
+  txn: ArrowLeftRight,
   shell: ShieldAlert,
   flagged: ShieldAlert,
   critical: ShieldAlert,
-  entity: FileText,
+  entity: BadgeDollarSign,
 };
 
 function EntityNode({ data, selected }) {
