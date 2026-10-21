@@ -8,6 +8,7 @@ import {
   FileCheck2,
   ShieldAlert,
   UserRound,
+  FileText,
 } from 'lucide-react';
 
 const iconByType = {
@@ -41,11 +42,15 @@ function EntityNode({ data, selected }) {
     <div className={`entity-node entity-node-${tone} ${selected ? 'entity-node-selected' : ''}`} title={`${type}: ${data.label}`}>
       <Handle type="target" position={Position.Top} className="entity-handle" />
       <div className="entity-node-icon-shell">
-        <div className="entity-node-icon"><Icon size={20} strokeWidth={1.7} /></div>
+        <div className="entity-node-icon">
+          {normalizedType === 'vendor' ? (
+            <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-uQgFiSyoiYW3y6adOPczlwiz3lgEso.png" alt="Vendor" />
+          ) : (
+            <Icon size={20} strokeWidth={1.7} />
+          )}
+        </div>
       </div>
       <strong>{data.label}</strong>
-      <span className="entity-node-type">{type}</span>
-      <small>{data.status || data.amount || 'Observed record'}</small>
       <Handle type="source" position={Position.Bottom} className="entity-handle" />
     </div>
   );
