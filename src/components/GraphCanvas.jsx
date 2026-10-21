@@ -204,6 +204,7 @@ function GraphCanvas({
 
   return (
     <div
+      className="graph-surface"
       style={{
         width: '100%',
         height: '100%',
