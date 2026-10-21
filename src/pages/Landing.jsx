@@ -176,6 +176,14 @@ export default function Landing({ onNavigate }) {
         </div>
       </section>
 
+      {/* 3. Operating model */}
+      <section className="trust-strip">
+        <span>BUILT FOR HIGH-SCRUTINY REVIEWS</span><span>Procurement integrity</span><span>Third-party risk</span><span>Internal controls</span><span>Audit-ready evidence</span>
+      </section>
+      <section className="statement-section">
+        <div><div className="eyebrow">THE RAVEL APPROACH</div><h2>Move from isolated records to defensible findings.</h2></div>
+        <p>Ravel gives investigation teams one controlled workspace to connect operational records, challenge machine-generated suggestions, and preserve the reasoning behind every relationship. No black-box scores. No presentation-only charts. Just a clear chain from source data to review decision.</p>
+      </section>
       {/* 3. Process Section */}
       <section className="process-section">
         <h2 className="section-title">Expose Hidden Risks, Fast</h2>
