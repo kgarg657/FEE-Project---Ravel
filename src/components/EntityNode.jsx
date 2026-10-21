@@ -44,7 +44,7 @@ function EntityNode({ data, selected }) {
       <div className="entity-node-icon-shell">
         <div className="entity-node-icon">
           {normalizedType === 'vendor' ? (
-            <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-uQgFiSyoiYW3y6adOPczlwiz3lgEso.png" alt="Vendor" />
+            <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-87Bc48uwx0gqGX7ErwISWPuWMTJtzZ.png" alt="Vendor" />
           ) : (
             <Icon size={20} strokeWidth={1.7} />
           )}
