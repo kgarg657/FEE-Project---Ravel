@@ -204,13 +204,13 @@ function GraphCanvas({
 
   return (
     <div
-      className="graph-surface"
+      className="graph-surface graph-surface-enterprise"
       style={{
         width: '100%',
         height: '100%',
         backgroundColor: theme.colors.bg,
         border: `1px solid ${theme.colors.border}`,
-        borderRadius: '8px',
+        borderRadius: '6px',
         position: 'relative',
         overflow: 'hidden',
       }}
