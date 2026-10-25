@@ -4,7 +4,7 @@ import {
   ArrowLeftRight,
   BadgeDollarSign,
   Landmark,
-  Store,
+  Handshake,
   FileCheck2,
   ShieldAlert,
   UserRound,
@@ -14,7 +14,7 @@ import {
 const iconByType = {
   account: Landmark,
   employee: UserRound,
-  vendor: Store,
+  vendor: Handshake,
   invoice: FileCheck2,
   transaction: ArrowLeftRight,
   txn: ArrowLeftRight,
