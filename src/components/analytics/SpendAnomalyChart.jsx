@@ -1,5 +1,6 @@
 // src/components/analytics/SpendAnomalyChart.jsx
 import React, { useState, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import {
   ResponsiveContainer,
   LineChart,
@@ -15,7 +16,11 @@ import Card from '../Card';
 import aiService from '../../services/aiService';
 import theme from '../../theme';
 
-export default function SpendAnomalyChart({ nodes = [], onSelectOutlier }) {
+export default function SpendAnomalyChart({ nodes: parentNodes, onSelectOutlier }) {
+  // Read nodes from Redux Store as fallback
+  const reduxNodes = useSelector((state) => state.graph.nodes);
+  const nodes = parentNodes && parentNodes.length > 0 ? parentNodes : reduxNodes;
+
   const [explanation, setExplanation] = useState('');
   const [isExplaining, setIsExplaining] = useState(false);
 
@@ -29,16 +34,23 @@ export default function SpendAnomalyChart({ nodes = [], onSelectOutlier }) {
       return parseFloat(cleaned);
     };
 
-    // Extract nodes that have valid financial values
-    const financialNodes = nodes
-      .map((n) => ({ node: n, val: parseAmount(n.data?.amount) }))
-      .filter((item) => !isNaN(item.val) && item.val > 0)
-      .map((item, idx) => ({
-        id: item.node.id,
-        label: item.node.data.label || `Item #${item.node.id}`,
-        amount: Math.round(item.val / 1000), // convert to thousands
-        date: item.node.data.date || `2026-0${(idx % 4) + 1}-${10 + idx}`,
+    // Extract nodes that have valid financial values (checking data.amount and amount)
+    const financialNodes = (nodes || [])
+      .map((n) => ({
+        node: n,
+        val: parseAmount(n.data?.amount || n.amount),
       }))
+      .filter((item) => !isNaN(item.val) && item.val > 0)
+      .map((item, idx) => {
+        const nodeLabel = item.node.data?.label || item.node.label || `Item #${item.node.id}`;
+        const nodeDate = item.node.data?.date || item.node.date || `2026-0${(idx % 4) + 1}-${10 + idx}`;
+        return {
+          id: item.node.id,
+          label: nodeLabel,
+          amount: Math.round(item.val / 1000), // convert to thousands
+          date: nodeDate,
+        };
+      })
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
     if (financialNodes.length === 0) {
@@ -59,7 +71,6 @@ export default function SpendAnomalyChart({ nodes = [], onSelectOutlier }) {
     const data = financialNodes.map((item, index) => {
       const isAnomaly = item.amount >= dynamicThreshold;
       const point = {
-        // Ensure unique time label if multiple items share identical dates
         time: `${item.date.slice(5)} (${index + 1})`,
         spend: item.amount,
         upperBound: dynamicThreshold,

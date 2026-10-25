@@ -2,7 +2,7 @@ import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import theme from '../theme';
 
-function EntityNode({ data, selected }) {
+function EntityNode({ data = {}, selected }) {
   // Directly pull entity colors defined in theme.js
   const getCategoryStyles = (type) => {
     switch (type?.toLowerCase()) {
@@ -30,15 +30,21 @@ function EntityNode({ data, selected }) {
           bg: theme.colors.shellRed, 
           border: '#F87171' 
         };
+      case 'account':
+      case 'bank':
+        return { 
+          bg: '#475569', 
+          border: '#94A3B8' 
+        };
       default:
         return { 
-          bg: theme.colors.textMuted, 
+          bg: theme.colors.surfaceHover, 
           border: theme.colors.border 
         };
     }
   };
 
-  const style = getCategoryStyles(data.type);
+  const style = getCategoryStyles(data?.type);
 
   return (
     <div

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
 import AnalyticsHeader from '../components/analytics/AnalyticsHeader';
 import MultiHopPathFinder from '../components/analytics/MultiHopPathFinder';
 import CircularReferenceDetector from '../components/analytics/CircularReferenceDetector';
@@ -7,7 +8,18 @@ import SpendAnomalyChart from '../components/analytics/SpendAnomalyChart';
 import AnalyticsSidebar from '../components/analytics/AnalyticsSidebar';
 import theme from '../theme';
 
-export default function Analytics({ nodes = [], edges = [], onNavigateToGraph }) {
+export default function Analytics({
+  nodes: parentNodes,
+  edges: parentEdges,
+  onNavigateToGraph,
+}) {
+  // Read nodes & edges from Redux Store as a fallback
+  const reduxNodes = useSelector((state) => state.graph.nodes);
+  const reduxEdges = useSelector((state) => state.graph.edges);
+
+  const nodes = parentNodes && parentNodes.length > 0 ? parentNodes : reduxNodes;
+  const edges = parentEdges && parentEdges.length > 0 ? parentEdges : reduxEdges;
+
   const [activeAlgorithm, setActiveAlgorithm] = useState('BFS');
   const [maxHops, setMaxHops] = useState(3);
   const [selectedOutlier, setSelectedOutlier] = useState(null);
@@ -29,7 +41,7 @@ export default function Analytics({ nodes = [], edges = [], onNavigateToGraph })
       {/* 1. Header */}
       <AnalyticsHeader />
 
-      {/* 2. Controls Strip (Placing it above or keeping it accessible) */}
+      {/* 2. Controls Strip */}
       <div style={{ width: '100%' }}>
         <AnalyticsSidebar
           algorithm={activeAlgorithm}
@@ -48,7 +60,6 @@ export default function Analytics({ nodes = [], edges = [], onNavigateToGraph })
           width: '100%',
         }}
       >
-        {/* ✅ Pass activeAlgorithm and maxHops here */}
         <MultiHopPathFinder
           nodes={nodes}
           edges={edges}
@@ -59,13 +70,12 @@ export default function Analytics({ nodes = [], edges = [], onNavigateToGraph })
       </div>
 
       {/* 4. Spend Anomaly Detection Chart */}
-<div style={{ width: '100%' }}>
-  <SpendAnomalyChart 
-    nodes={nodes} 
-    onSelectOutlier={(point) => setSelectedOutlier(point)} 
-  />
-</div>
-
+      <div style={{ width: '100%' }}>
+        <SpendAnomalyChart
+          nodes={nodes}
+          onSelectOutlier={(point) => setSelectedOutlier(point)}
+        />
+      </div>
 
       {/* 5. Circular Reference Detector */}
       <div style={{ width: '100%' }}>

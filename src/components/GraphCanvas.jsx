@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import {
   ReactFlow,
   Controls,
   Background,
   useNodesState,
   useEdgesState,
-  addEdge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Link2 } from 'lucide-react';
@@ -17,20 +17,59 @@ import Modal from './Modal';
 import Button from './Button';
 import theme from '../theme';
 
-const nodeTypes = { entityNode: EntityNode };
+// Redux & Supabase imports
+import {
+  setGraphData,
+  setNodes as setReduxNodes,
+  setEdges as setReduxEdges,
+  addNode,
+  addEdge,
+  updateNodePosition,
+  removeElements,
+  approveEdge as approveEdgeAction,
+  rejectEdge as rejectEdgeAction,
+  setSelectedNodeId,
+} from '../store/graphSlice';
+import {
+  saveEdge,
+  deleteNodeFromDb,
+  deleteEdgeFromDb,
+  updateNodePositionInDb,
+  fetchGraphData,
+} from '../services/graphService';
+
+const nodeTypes = {
+  entityNode: EntityNode,
+  default: EntityNode,
+  Employee: EntityNode,
+  Vendor: EntityNode,
+  Invoice: EntityNode,
+  Txn: EntityNode,
+  Account: EntityNode,
+  employee: EntityNode,
+  vendor: EntityNode,
+  invoice: EntityNode,
+  txn: EntityNode,
+  account: EntityNode,
+};
 const edgeTypes = { edgeBadge: EdgeBadge };
 
 function GraphCanvas({
-  initialNodes = [],
-  initialEdges = [],
+  initialNodes: propInitialNodes,
+  initialEdges: propInitialEdges,
   onNodeClick,
   onNodesChangeParent,
   onEdgesChangeParent,
-  /* ADDED: Prop to receive array of node IDs to highlight from Analytics navigation */
   highlightedNodeIds = [],
 }) {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const dispatch = useDispatch();
+
+  // Read live nodes & edges from Redux Store
+  const reduxNodes = useSelector((state) => state.graph.nodes);
+  const reduxEdges = useSelector((state) => state.graph.edges);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(reduxNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(reduxEdges);
   const [selectedElements, setSelectedElements] = useState([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -41,78 +80,113 @@ function GraphCanvas({
   const [edgeToDelete, setEdgeToDelete] = useState(null);
   const [isInteractive, setIsInteractive] = useState(true);
 
+  // 1. Initial Load: Fetch live nodes & edges from Supabase (or fallback) into Redux store
   useEffect(() => {
-    setNodes(initialNodes);
-  }, [initialNodes, setNodes]);
+    let isMounted = true;
+    async function loadData() {
+      const { nodes: dbNodes, edges: dbEdges } = await fetchGraphData();
+      if (isMounted && dbNodes && dbNodes.length > 0) {
+        dispatch(setGraphData({ nodes: dbNodes, edges: dbEdges }));
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, [dispatch]);
+
+  // 2. Keep local React Flow canvas synced with Redux store
+  useEffect(() => {
+    if (reduxNodes && reduxNodes.length > 0) {
+      setNodes(reduxNodes);
+    }
+  }, [reduxNodes, setNodes]);
 
   useEffect(() => {
-    setEdges(initialEdges);
-  }, [initialEdges, setEdges]);
+    if (reduxEdges) {
+      setEdges(reduxEdges);
+    }
+  }, [reduxEdges, setEdges]);
 
   const handleSelectionChange = useCallback(({ nodes: selNodes, edges: selEdges }) => {
     setSelectedElements([...selNodes, ...selEdges]);
   }, []);
 
-  const handleConfirmDelete = () => {
-    const selectedIds = new Set(selectedElements.map((el) => el.id));
-    const updatedNodes = nodes.filter((node) => !selectedIds.has(node.id));
-    const updatedEdges = edges.filter(
-      (edge) =>
-        !selectedIds.has(edge.id) &&
-        !selectedIds.has(edge.source) &&
-        !selectedIds.has(edge.target)
-    );
+  const handleConfirmDelete = async () => {
+    const selectedNodeIds = selectedElements.filter((el) => !el.source).map((el) => String(el.id));
+    const selectedEdgeIds = selectedElements.filter((el) => el.source).map((el) => String(el.id));
 
-    setNodes(updatedNodes);
-    setEdges(updatedEdges);
+    dispatch(removeElements({ nodeIds: selectedNodeIds, edgeIds: selectedEdgeIds }));
 
-    if (onNodesChangeParent) onNodesChangeParent(updatedNodes);
-    if (onEdgesChangeParent) onEdgesChangeParent(updatedEdges);
+    for (const id of selectedNodeIds) {
+      await deleteNodeFromDb(id);
+    }
+    for (const id of selectedEdgeIds) {
+      await deleteEdgeFromDb(id);
+    }
 
     setSelectedElements([]);
     setShowDeleteModal(false);
   };
 
-  const handleApproveEdge = useCallback((edgeId) => {
-    setEdges((prevEdges) => {
-      const updated = prevEdges.map((edge) => {
-        if (edge.id === edgeId) {
-          return {
-            ...edge,
-            data: { ...edge.data, isSuggested: false, label: 'Approved' },
-          };
-        }
-        return edge;
-      });
-      if (onEdgesChangeParent) onEdgesChangeParent(updated);
-      return updated;
-    });
-  }, [setEdges, onEdgesChangeParent]);
-
-  const handleRejectEdge = useCallback((edgeId) => {
-    setEdges((prevEdges) => {
-      const updated = prevEdges.filter((edge) => edge.id !== edgeId);
-      if (onEdgesChangeParent) onEdgesChangeParent(updated);
-      return updated;
-    });
-  }, [setEdges, onEdgesChangeParent]);
-
-  const interactiveEdges = edges.map((edge) => ({
-    ...edge,
-    data: {
-      ...edge.data,
-      onApprove: handleApproveEdge,
-      onReject: handleRejectEdge,
+  const handleApproveEdge = useCallback(
+    async (edgeId) => {
+      dispatch(approveEdgeAction(edgeId));
+      const edge = reduxEdges.find((e) => String(e.id) === String(edgeId));
+      if (edge) {
+        await saveEdge({
+          ...edge,
+          data: { ...edge.data, isSuggested: false, label: 'Approved' },
+          is_suggested: false,
+          label: 'Approved',
+        });
+      }
     },
-  }));
+    [dispatch, reduxEdges]
+  );
+
+  const handleRejectEdge = useCallback(
+    async (edgeId) => {
+      dispatch(rejectEdgeAction(edgeId));
+      await deleteEdgeFromDb(edgeId);
+    },
+    [dispatch]
+  );
+
+  const interactiveEdges = useMemo(() => {
+    return (edges || []).map((edge) => ({
+      ...edge,
+      data: {
+        ...edge.data,
+        onApprove: handleApproveEdge,
+        onReject: handleRejectEdge,
+      },
+    }));
+  }, [edges, handleApproveEdge, handleRejectEdge]);
 
   const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
+    async (params) => {
+      const newEdge = {
+        id: `edge-${Date.now()}`,
+        source: String(params.source),
+        target: String(params.target),
+        type: 'edgeBadge',
+        data: { isSuggested: false, label: 'Approved' },
+        is_suggested: false,
+        label: 'Approved',
+      };
+      dispatch(addEdge(newEdge));
+      await saveEdge(newEdge);
+    },
+    [dispatch]
   );
 
   const handleNodeClick = (_, node) => {
     if (!isInteractive) return;
+
+    // Dispatch clicked node ID to Redux Inspector Drawer
+    dispatch(setSelectedNodeId(node.id));
+
     if (connectMode) {
       if (!connectSourceId) {
         setConnectSourceId(node.id);
@@ -125,6 +199,14 @@ function GraphCanvas({
     }
     onNodeClick && onNodeClick(node);
   };
+
+  const handleNodeDragStop = useCallback(
+    (event, node) => {
+      dispatch(updateNodePosition({ id: node.id, position: node.position }));
+      updateNodePositionInDb(node.id, node.position);
+    },
+    [dispatch]
+  );
 
   const handleToggleConnectMode = () => {
     if (!isInteractive) return;
@@ -141,18 +223,19 @@ function GraphCanvas({
     }
   }, [isInteractive]);
 
-  const handleConfirmConnection = () => {
+  const handleConfirmConnection = async () => {
     if (!pendingConnection) return;
     const newEdge = {
       id: `edge-${Date.now()}`,
-      source: pendingConnection.source,
-      target: pendingConnection.target,
+      source: String(pendingConnection.source),
+      target: String(pendingConnection.target),
       type: 'edgeBadge',
       data: { isSuggested: true, label: 'Suggested' },
+      is_suggested: true,
+      label: 'Suggested',
     };
-    const updatedEdges = [...edges, newEdge];
-    setEdges(updatedEdges);
-    if (onEdgesChangeParent) onEdgesChangeParent(updatedEdges);
+    dispatch(addEdge(newEdge));
+    await saveEdge(newEdge);
 
     setPendingConnection(null);
     setConnectSourceId(null);
@@ -163,44 +246,50 @@ function GraphCanvas({
     setEdgeToDelete(edge.id);
   };
 
-  const handleConfirmEdgeDelete = () => {
-    const updatedEdges = edges.filter((e) => e.id !== edgeToDelete);
-    setEdges(updatedEdges);
-    if (onEdgesChangeParent) onEdgesChangeParent(updatedEdges);
+  const handleConfirmEdgeDelete = async () => {
+    if (!edgeToDelete) return;
+    dispatch(rejectEdgeAction(edgeToDelete));
+    await deleteEdgeFromDb(edgeToDelete);
     setEdgeToDelete(null);
   };
 
   const edgeToDeleteInfo = edges.find((e) => e.id === edgeToDelete);
   const sourceNodeLabel = (id) => nodes.find((n) => n.id === id)?.data?.label || id;
 
-  /* MODIFIED: Updated displayNodes mapping to inject highlight styling if node ID is in highlightedNodeIds */
-  const displayNodes = nodes.map((n) => {
-    const isConnectSource = n.id === connectSourceId;
-    const isHighlighted = highlightedNodeIds.includes(String(n.id));
+  const displayNodes = useMemo(() => {
+    return (nodes || []).map((n) => {
+      const isConnectSource = n.id === connectSourceId;
+      const isHighlighted = highlightedNodeIds.includes(String(n.id));
 
-    let updatedStyle = { ...(n.style || {}) };
+      let updatedStyle = { ...(n.style || {}) };
 
-    if (isConnectSource) {
-      updatedStyle = {
-        ...updatedStyle,
-        boxShadow: `0 0 0 4px ${theme.colors.accent}`,
-        borderRadius: '50%',
+      if (isConnectSource) {
+        updatedStyle = {
+          ...updatedStyle,
+          boxShadow: `0 0 0 4px ${theme.colors.accent}`,
+        };
+      } else if (isHighlighted) {
+        updatedStyle = {
+          ...updatedStyle,
+          boxShadow: `0 0 16px ${theme.colors.accent}`,
+        };
+      }
+
+      const resolvedType = n.data?.type || n.entityType || n.type || 'Entity';
+      const resolvedLabel = n.data?.label || n.label || `Entity #${n.id}`;
+
+      return {
+        ...n,
+        type: 'entityNode',
+        data: {
+          ...(n.data || {}),
+          label: resolvedLabel,
+          type: resolvedType,
+        },
+        style: updatedStyle,
       };
-    } else if (isHighlighted) {
-      /* Dynamic cyan glow & border for highlighted cycle/path nodes */
-      updatedStyle = {
-        ...updatedStyle,
-        border: `2px solid ${theme.colors.accent}`,
-        boxShadow: `0 0 16px ${theme.colors.accent}`,
-        borderRadius: '8px',
-      };
-    }
-
-    return {
-      ...n,
-      style: updatedStyle,
-    };
-  });
+    });
+  }, [nodes, connectSourceId, highlightedNodeIds]);
 
   return (
     <div
@@ -288,6 +377,7 @@ function GraphCanvas({
         onConnect={onConnect}
         onSelectionChange={handleSelectionChange}
         onNodeClick={handleNodeClick}
+        onNodeDragStop={handleNodeDragStop}
         onEdgeClick={isInteractive ? handleEdgeClick : undefined}
         fitView
         panOnDrag={true}
