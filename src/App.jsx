@@ -62,12 +62,12 @@ export default function App() {
       id: newId,
       type: 'entityNode',
       position: { x: 280 + Math.random() * 80, y: 180 + Math.random() * 80 },
-      data: { 
-        label: newEntity.label || newEntity.name, 
-        type: newEntity.type, 
+      data: {
+        label: newEntity.label || newEntity.name,
+        type: newEntity.type,
         gst: newEntity.gst,
         status: newEntity.status,
-        ...newEntity.metadata 
+        ...newEntity.metadata
       },
     };
 
