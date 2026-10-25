@@ -43,11 +43,7 @@ function EntityNode({ data, selected }) {
       <Handle type="target" position={Position.Top} className="entity-handle" />
       <div className="entity-node-icon-shell">
         <div className="entity-node-icon">
-          {normalizedType === 'vendor' ? (
-            <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-87Bc48uwx0gqGX7ErwISWPuWMTJtzZ.png" alt="Vendor" />
-          ) : (
-            <Icon size={20} strokeWidth={1.7} />
-          )}
+          <Icon size={20} strokeWidth={1.7} />
         </div>
       </div>
       <strong>{data.label}</strong>
