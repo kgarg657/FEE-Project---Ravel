@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import Card from './Card';
 import Input from './Input';
 import Button from './Button';
 import Modal from './Modal';
 import theme from '../theme';
 
-function AddEntitySidebar({ existingNodes = [], onAddEntity }) {
+import { addNode, addEdge } from "../store/graphSlice";
+import { saveNode, saveEdge } from "../services/graphService";
+
+function AddEntitySidebar({ onAddEntity }) {
+  const dispatch = useDispatch();
+
+  // Read live nodes from Redux store for target connection list
+  const existingNodes = useSelector((state) => state.graph.nodes || []);
+
   const [formData, setFormData] = useState({
     type: 'Vendor',
     name: '',
@@ -44,16 +53,82 @@ function AddEntitySidebar({ existingNodes = [], onAddEntity }) {
     setShowConfirmModal(true);
   };
 
-  const handleConfirmAdd = () => {
-    if (onAddEntity) {
-      let metadata = {};
-      if (formData.type === 'Vendor') metadata = { gst: formData.gstNumber };
-      if (formData.type === 'Employee') metadata = { empId: formData.employeeId, dept: formData.department };
-      if (formData.type === 'Invoice') metadata = { invoiceNo: formData.invoiceNumber, amount: formData.amount };
-      if (formData.type === 'Txn') metadata = { txnHash: formData.txnHash, amount: formData.amount };
+  const handleConfirmAdd = async () => {
+    let metadata = {};
+    if (formData.type === 'Vendor') metadata = { gst: formData.gstNumber };
+    if (formData.type === 'Employee') metadata = { empId: formData.employeeId, dept: formData.department };
+    if (formData.type === 'Invoice') metadata = { invoiceNo: formData.invoiceNumber, amount: formData.amount };
+    if (formData.type === 'Txn') metadata = { txnHash: formData.txnHash, amount: formData.amount };
 
+    const newNodeId = `node-${Date.now()}`;
+    const randomPosition = {
+      x: Math.floor(Math.random() * 400) + 150,
+      y: Math.floor(Math.random() * 300) + 150,
+    };
+
+    // Construct React Flow formatted node object
+    const newNode = {
+      id: newNodeId,
+      type: 'entityNode',
+      position: randomPosition,
+      data: {
+        label: formData.name,
+        type: formData.type,
+        role: formData.department || formData.type,
+        dept: formData.department || '',
+        gst: formData.gstNumber || '',
+        riskScore: 30,
+        riskLevel: 'Low',
+        amount: formData.amount || '',
+        status: 'Active',
+        metadata,
+      },
+      label: formData.name,
+      type: formData.type,
+      role: formData.department || formData.type,
+      gst: formData.gstNumber || '',
+      risk_score: 30,
+      amount: formData.amount || '',
+    };
+
+    // 1. Dispatch Node to Redux Store
+    dispatch(addNode(newNode));
+
+    // 2. Persist Node to Supabase
+    await saveNode(newNode);
+
+    // 3. Process Target Connections (Edges)
+    if (formData.selectedTargetIds.length > 0) {
+      for (const targetId of formData.selectedTargetIds) {
+        const newEdge = {
+          id: `edge-${Date.now()}-${targetId}`,
+          source: newNodeId,
+          target: targetId,
+          type: 'edgeBadge',
+          data: {
+            isSuggested: formData.linkType === 'suggested',
+            label: formData.linkType === 'suggested' ? 'Suggested' : 'Approved',
+          },
+        };
+
+        // Dispatch Edge to Redux Store
+        dispatch(addEdge(newEdge));
+
+        // Persist Edge to Supabase
+        await saveEdge({
+          id: newEdge.id,
+          source: newEdge.source,
+          target: newEdge.target,
+          label: newEdge.data.label,
+          is_suggested: newEdge.data.isSuggested,
+        });
+      }
+    }
+
+    // Call legacy parent callback if passed
+    if (onAddEntity) {
       onAddEntity({
-        id: `node-${Date.now()}`,
+        id: newNodeId,
         type: formData.type,
         label: formData.name,
         metadata,
@@ -79,7 +154,7 @@ function AddEntitySidebar({ existingNodes = [], onAddEntity }) {
 
   const selectedTargetNames = existingNodes
     .filter((n) => formData.selectedTargetIds.includes(n.id))
-    .map((n) => `${n.data.type}: ${n.data.label}`);
+    .map((n) => `${n.data?.type || n.type}: ${n.data?.label || n.label}`);
 
   return (
     <>
@@ -191,6 +266,9 @@ function AddEntitySidebar({ existingNodes = [], onAddEntity }) {
               ) : (
                 existingNodes.map((node) => {
                   const isChecked = formData.selectedTargetIds.includes(node.id);
+                  const nodeType = node.data?.type || node.type || 'Entity';
+                  const nodeLabel = node.data?.label || node.label || node.id;
+
                   return (
                     <label
                       key={node.id}
@@ -212,7 +290,7 @@ function AddEntitySidebar({ existingNodes = [], onAddEntity }) {
                         onChange={() => handleToggleTarget(node.id)}
                         style={{ cursor: 'pointer' }}
                       />
-                      <span>{node.data.type}: <strong>{node.data.label}</strong></span>
+                      <span>{nodeType}: <strong>{nodeLabel}</strong></span>
                     </label>
                   );
                 })

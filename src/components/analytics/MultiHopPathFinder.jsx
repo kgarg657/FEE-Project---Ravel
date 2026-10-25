@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
 import { Network, Sparkles, ArrowRight, AlertCircle } from 'lucide-react';
 import Card from '../Card';
 import Button from '../Button';
@@ -6,13 +7,34 @@ import Badge from '../Badge';
 import aiService from '../../services/aiService';
 import theme from '../../theme';
 
-export default function MultiHopPathFinder({ nodes = [], edges = [], algorithm = 'BFS', maxHops = 3 }) {
-  const [sourceId, setSourceId] = useState(nodes[0]?.id || '');
-  const [targetId, setTargetId] = useState(nodes[2]?.id || '');
+export default function MultiHopPathFinder({
+  nodes: parentNodes,
+  edges: parentEdges,
+  algorithm = 'BFS',
+  maxHops = 3,
+}) {
+  // Read nodes & edges from Redux Store as fallback
+  const reduxNodes = useSelector((state) => state.graph.nodes);
+  const reduxEdges = useSelector((state) => state.graph.edges);
+
+  const nodes = parentNodes && parentNodes.length > 0 ? parentNodes : reduxNodes;
+  const edges = parentEdges && parentEdges.length > 0 ? parentEdges : reduxEdges;
+
+  const [sourceId, setSourceId] = useState(() => nodes[0]?.id ? String(nodes[0].id) : '');
+  const [targetId, setTargetId] = useState(() => nodes[2]?.id ? String(nodes[2].id) : (nodes[1]?.id ? String(nodes[1].id) : ''));
   const [pathResult, setPathResult] = useState(null);
   const [aiInsight, setAiInsight] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  React.useEffect(() => {
+    if (!sourceId && nodes.length > 0) {
+      setSourceId(String(nodes[0].id));
+    }
+    if (!targetId && nodes.length > 1) {
+      setTargetId(String(nodes[2]?.id || nodes[1]?.id));
+    }
+  }, [nodes, sourceId, targetId]);
 
   const calculatePath = async () => {
     setErrorMsg('');
@@ -26,7 +48,7 @@ export default function MultiHopPathFinder({ nodes = [], edges = [], algorithm =
 
     setIsAnalyzing(true);
 
-    // 2. Build Adjacency List
+    // 1. Build Adjacency List
     const adj = {};
     nodes.forEach((n) => (adj[n.id] = []));
     edges.forEach((e) => {
@@ -36,9 +58,8 @@ export default function MultiHopPathFinder({ nodes = [], edges = [], algorithm =
 
     let foundPath = null;
 
-    // 3. Traversal respecting BFS / DFS and maxHops
+    // 2. Traversal respecting BFS / DFS and maxHops
     if (algorithm === 'BFS') {
-      // Breadth-First Search
       const queue = [[sourceId]];
       const visited = new Set([sourceId]);
 
@@ -51,7 +72,6 @@ export default function MultiHopPathFinder({ nodes = [], edges = [], algorithm =
           break;
         }
 
-        // Enforce hop limit: path length - 1 = number of hops
         if (currentPath.length - 1 < maxHops) {
           const neighbors = adj[lastNode] || [];
           for (const neighbor of neighbors) {
@@ -63,7 +83,6 @@ export default function MultiHopPathFinder({ nodes = [], edges = [], algorithm =
         }
       }
     } else {
-      // Depth-First Search (DFS)
       const stack = [[sourceId]];
       const visited = new Set();
 
@@ -88,15 +107,14 @@ export default function MultiHopPathFinder({ nodes = [], edges = [], algorithm =
       }
     }
 
-    // 4. Guard Clause: If no path found within hop depth
+    // 3. Guard Clause: If no path found
     if (!foundPath) {
       setIsAnalyzing(false);
       setErrorMsg(`No path found using ${algorithm} within a ${maxHops}-hop depth limit.`);
       return;
     }
 
-
-           // 5. Format Path & Determine Relationship Verification Status
+    // 4. Format Path & Determine Relationship Verification Status
     let hasUnverifiedLink = false;
 
     const computedPath = foundPath.map((id, idx, arr) => {
@@ -114,10 +132,11 @@ export default function MultiHopPathFinder({ nodes = [], edges = [], algorithm =
             (String(e.target) === prevId && String(e.source) === currId)
         );
 
-        // ✅ FIXED: Strictly check suggestion flags/labels, NOT edge.type
         const isSuggested =
           connectingEdge?.data?.isSuggested === true ||
+          connectingEdge?.is_suggested === true ||
           connectingEdge?.data?.label?.toLowerCase() === 'suggested' ||
+          connectingEdge?.label?.toLowerCase() === 'suggested' ||
           String(connectingEdge?.id).startsWith('gemini-edge') ||
           String(connectingEdge?.id).startsWith('edge-gst') ||
           String(connectingEdge?.id).startsWith('edge-sender') ||
@@ -138,10 +157,13 @@ export default function MultiHopPathFinder({ nodes = [], edges = [], algorithm =
         variant = hasUnverifiedLink ? 'flagged' : 'verified';
       }
 
+      const nodeLabel = nodeObj?.data?.label || nodeObj?.label || String(id);
+      const nodeType = nodeObj?.data?.type || nodeObj?.type || 'Entity';
+
       return {
         id: String(id),
-        label: nodeObj?.data?.label || String(id),
-        type: nodeObj?.data?.type || 'Entity',
+        label: nodeLabel,
+        type: nodeType,
         badge: badgeLabel,
         variant,
       };
@@ -152,10 +174,10 @@ export default function MultiHopPathFinder({ nodes = [], edges = [], algorithm =
     const srcNode = nodes.find((n) => String(n.id) === String(sourceId));
     const tgtNode = nodes.find((n) => String(n.id) === String(targetId));
 
-    const sourceLabel = srcNode?.data?.label || String(sourceId);
-    const targetLabel = tgtNode?.data?.label || String(targetId);
+    const sourceLabel = srcNode?.data?.label || srcNode?.label || String(sourceId);
+    const targetLabel = tgtNode?.data?.label || tgtNode?.label || String(targetId);
 
-    // 6. Execute AI Narrative
+    // 5. Execute AI Narrative
     try {
       const narrative = await aiService.explainMultiHopPath(
         sourceLabel,
@@ -165,7 +187,11 @@ export default function MultiHopPathFinder({ nodes = [], edges = [], algorithm =
       setAiInsight(narrative);
     } catch (err) {
       console.error('MultiHop AI Error:', err);
-      setAiInsight(`Multi-hop traversal established: ${sourceLabel} connects to ${targetLabel} via ${computedPath.length - 1} intermediary hop(s).`);
+      setAiInsight(
+        `Multi-hop traversal established: ${sourceLabel} connects to ${targetLabel} via ${
+          computedPath.length - 1
+        } intermediary hop(s).`
+      );
     } finally {
       setIsAnalyzing(false);
     }
@@ -200,11 +226,15 @@ export default function MultiHopPathFinder({ nodes = [], edges = [], algorithm =
               fontSize: '12px',
             }}
           >
-            {nodes.map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.data?.type || 'Node'}: {n.data?.label || n.id}
-              </option>
-            ))}
+            {nodes.map((n) => {
+              const label = n.data?.label || n.label || n.id;
+              const type = n.data?.type || n.type || 'Node';
+              return (
+                <option key={n.id} value={n.id}>
+                  {type}: {label}
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -223,11 +253,15 @@ export default function MultiHopPathFinder({ nodes = [], edges = [], algorithm =
               fontSize: '12px',
             }}
           >
-            {nodes.map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.data?.type || 'Node'}: {n.data?.label || n.id}
-              </option>
-            ))}
+            {nodes.map((n) => {
+              const label = n.data?.label || n.label || n.id;
+              const type = n.data?.type || n.type || 'Node';
+              return (
+                <option key={n.id} value={n.id}>
+                  {type}: {label}
+                </option>
+              );
+            })}
           </select>
         </div>
 

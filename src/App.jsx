@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
 import MainLayout from './layouts/MainLayout';
 import Landing from './pages/Landing';
 import LoginPage from './pages/LoginPage';
@@ -9,80 +10,102 @@ import Analytics from './pages/Analytics';
 import EntityRegistry from './pages/EntityRegistry';
 import CaseManagement from './pages/CaseManagement';
 import Settings from './pages/Settings';
-import { initialNodes, initialEdges } from './data/mockData';
+import {
+  setNodes as setReduxNodes,
+  setEdges as setReduxEdges,
+  addNode,
+  addEdge,
+  approveEdge,
+  rejectEdge,
+} from './store/graphSlice';
+import { saveNode, saveEdge, deleteEdgeFromDb } from './services/graphService';
 
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
   const [highlightedNodeIds, setHighlightedNodeIds] = useState([]);
 
-  const [nodes, setNodes] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ravel_nodes');
-      return saved ? JSON.parse(saved) : initialNodes;
-    } catch {
-      return initialNodes;
-    }
-  });
+  // Read single source of truth from Redux
+  const nodes = useSelector((state) => state.graph.nodes);
+  const edges = useSelector((state) => state.graph.edges);
 
-  const [edges, setEdges] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ravel_edges');
-      return saved ? JSON.parse(saved) : initialEdges;
-    } catch {
-      return initialEdges;
-    }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('ravel_nodes', JSON.stringify(nodes));
-  }, [nodes]);
-
-  useEffect(() => {
-    localStorage.setItem('ravel_edges', JSON.stringify(edges));
-  }, [edges]);
-
-  const handleApproveEdge = (edgeId) => {
-    setEdges((prev) =>
-      prev.map((edge) =>
-        edge.id === edgeId
-          ? { ...edge, data: { ...edge.data, isSuggested: false, label: 'Approved' } }
-          : edge
-      )
-    );
+  const setNodes = (newNodes) => {
+    dispatch(setReduxNodes(typeof newNodes === 'function' ? newNodes(nodes) : newNodes));
   };
 
-  const handleRejectEdge = (edgeId) => {
-    setEdges((prev) => prev.filter((edge) => edge.id !== edgeId));
+  const setEdges = (newEdges) => {
+    dispatch(setReduxEdges(typeof newEdges === 'function' ? newEdges(edges) : newEdges));
   };
 
-  const handleAddEntity = (newEntity) => {
+  const handleApproveEdge = async (edgeId) => {
+    dispatch(approveEdge(edgeId));
+    const edge = edges.find((e) => String(e.id) === String(edgeId));
+    if (edge) {
+      await saveEdge({
+        ...edge,
+        data: { ...edge.data, isSuggested: false, label: 'Approved' },
+        is_suggested: false,
+        label: 'Approved',
+      });
+    }
+  };
+
+  const handleRejectEdge = async (edgeId) => {
+    dispatch(rejectEdge(edgeId));
+    await deleteEdgeFromDb(edgeId);
+  };
+
+  const handleAddEntity = async (newEntity) => {
     const newId = String(newEntity.id || Date.now());
+    const randomPosition = newEntity.position || {
+      x: 280 + Math.random() * 80,
+      y: 180 + Math.random() * 80,
+    };
+
     const newNode = {
       id: newId,
       type: 'entityNode',
-      position: { x: 280 + Math.random() * 80, y: 180 + Math.random() * 80 },
-      data: { 
-        label: newEntity.label || newEntity.name, 
-        type: newEntity.type, 
-        gst: newEntity.gst,
-        status: newEntity.status,
-        ...newEntity.metadata 
+      position: randomPosition,
+      data: {
+        label: newEntity.label || newEntity.name,
+        type: newEntity.type,
+        role: newEntity.role || newEntity.dept || newEntity.type,
+        dept: newEntity.dept || newEntity.role || '',
+        gst: newEntity.gst || '',
+        riskScore: newEntity.riskScore || 30,
+        riskLevel: newEntity.riskLevel || 'Low',
+        amount: newEntity.amount || '',
+        status: newEntity.status || 'Active',
+        ...(newEntity.metadata || {}),
       },
+      label: newEntity.label || newEntity.name,
+      type: newEntity.type,
+      role: newEntity.role || newEntity.dept,
+      gst: newEntity.gst,
+      risk_score: newEntity.riskScore || 30,
+      amount: newEntity.amount,
     };
 
-    setNodes((prev) => [...prev, newNode]);
+    dispatch(addNode(newNode));
+    await saveNode(newNode);
 
     if (newEntity.targetIds && newEntity.targetIds.length > 0) {
       const isSuggested = newEntity.linkType === 'suggested';
-      const newEdges = newEntity.targetIds.map((targetId, index) => ({
-        id: `edge-${Date.now()}-${index}`,
-        source: newId,
-        target: String(targetId),
-        type: 'edgeBadge',
-        data: { isSuggested, label: isSuggested ? 'Suggested' : 'Approved' },
-      }));
-      setEdges((prev) => [...prev, ...newEdges]);
+      for (const [index, targetId] of newEntity.targetIds.entries()) {
+        const edgeId = `edge-${Date.now()}-${index}`;
+        const newEdge = {
+          id: edgeId,
+          source: newId,
+          target: String(targetId),
+          type: 'edgeBadge',
+          data: { isSuggested, label: isSuggested ? 'Suggested' : 'Approved' },
+          is_suggested: isSuggested,
+          label: isSuggested ? 'Suggested' : 'Approved',
+        };
+        dispatch(addEdge(newEdge));
+        await saveEdge(newEdge);
+      }
     }
   };
 
