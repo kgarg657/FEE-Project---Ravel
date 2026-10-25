@@ -1,5 +1,6 @@
 // Shared Contract - Property names must remain exact
 
+// src/store/sharedBlueprint.js
 import { initialNodes, initialEdges } from '../data/mockData';
 
 const getSavedNodes = () => {
