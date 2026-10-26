@@ -1,19 +1,19 @@
-//WITH DB CONNECTIVITY
-
-
 // src/pages/SignupPage.jsx
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import Button from '../components/Button';
 import Card from "../components/Card";
 import Logo from '../components/Logo';
-import { createUserProfile } from '../services/supabaseService';
+import { signUpUser } from '../services/supabaseService';
+import { setUser } from '../store/authSlice';
 import './SignupPage.css';
 
 import bgImage from '../assets/ravel-background.webp.jpeg';
 
 const SignupPage = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const [formData, setFormData] = useState({
     role: 'Auditor',
@@ -28,6 +28,7 @@ const SignupPage = () => {
   });
 
   const [errors, setErrors] = useState({});
+  const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -36,6 +37,9 @@ const SignupPage = () => {
 
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: null }));
+    }
+    if (errorMessage) {
+      setErrorMessage('');
     }
 
     setFormData((prev) => ({
@@ -77,8 +81,8 @@ const SignupPage = () => {
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (passwordStrength.label !== 'Strong') {
-      newErrors.password = 'Password must be at least 10 characters long';
+    } else if (passwordStrength.label === 'Weak') {
+      newErrors.password = 'Password must be at least 6 characters long';
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -94,63 +98,54 @@ const SignupPage = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage('');
 
-    const formErrors = validateForm();
-    if (Object.keys(formErrors).length > 0) {
-      setErrors(formErrors);
+    // Run form validation first
+    const formValidationErrors = validateForm();
+    if (Object.keys(formValidationErrors).length > 0) {
+      setErrors(formValidationErrors);
       return;
     }
 
     setIsSubmitting(true);
 
-    const newUserId = crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now();
-
-    const newUser = {
-      id: newUserId,
-      role: formData.role,
-      fullName: formData.fullName,
-      email: formData.email,
-      auditorId: formData.auditorId || `AUD-${Math.floor(1000 + Math.random() * 9000)}`,
-      organizationName: formData.organizationName,
-      industry: formData.industry,
-      password: formData.password,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Payload mapped strictly to Supabase 'profiles' table columns (id, name, email, role)
-    const profilePayload = {
-      id: newUser.id,
-      name: newUser.fullName,
-      email: newUser.email,
-      role: newUser.role
-    };
-
     try {
-      // Save profile to Supabase Database
-      const createdProfile = await createUserProfile(profilePayload);
+      // 1. Create native Auth user and public Profile record in Supabase
+      const newUser = await signUpUser({
+        email: formData.email.trim(),
+        password: formData.password,
+        fullName: formData.fullName.trim(),
+        role: formData.role || 'Auditor',
+        auditorId: formData.auditorId?.trim(),
+        organizationName: formData.organizationName?.trim(),
+        industry: formData.industry,
+      });
 
-      if (!createdProfile) {
-        setIsSubmitting(false);
-        setErrors({ email: 'Failed to create account in database. Email might already exist.' });
-        return;
-      }
+      // 2. Prepare user session for Redux store & localStorage
+      const userCredentials = {
+        auditorId: newUser?.id || formData.auditorId?.trim() || Date.now(),
+        email: newUser?.email || formData.email.trim(),
+        fullName: formData.fullName.trim(),
+        role: formData.role || 'Auditor',
+        isLoggedIn: true,
+        loginTimestamp: new Date().toISOString(),
+      };
 
-      // Fallback local storage cache
-      localStorage.setItem('ravel_registered_user', JSON.stringify(newUser));
+      localStorage.setItem('ravel_user', JSON.stringify(userCredentials));
+      dispatch(setUser(userCredentials));
 
+      setIsSubmitting(false);
+      setIsSubmitted(true);
+
+      // 3. Redirect to Graph Canvas
       setTimeout(() => {
-        setIsSubmitting(false);
-        setIsSubmitted(true);
-
-        setTimeout(() => {
-          navigate('/login');
-        }, 1500);
-      }, 600);
+        navigate('/canvas');
+      }, 1500);
 
     } catch (err) {
       console.error('Signup error:', err);
       setIsSubmitting(false);
-      setErrors({ email: 'An unexpected error occurred during database registration.' });
+      setErrorMessage(err.message || 'Failed to create account. Please try again.');
     }
   };
 
@@ -171,11 +166,28 @@ const SignupPage = () => {
           </p>
         </div>
 
+        {errorMessage && (
+          <div
+            style={{
+              padding: '10px 12px',
+              marginBottom: '16px',
+              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              borderRadius: '4px',
+              color: '#f87171',
+              fontSize: '0.82rem',
+              textAlign: 'center',
+            }}
+          >
+            {errorMessage}
+          </div>
+        )}
+
         {isSubmitted ? (
           <div className="success-screen">
             <div className="success-icon">✓</div>
             <h2>Account Created Successfully!</h2>
-            <p>Redirecting to login page...</p>
+            <p>Loading Investigation Canvas...</p>
           </div>
         ) : (
           <form onSubmit={handleFormSubmit} className="signup-form" noValidate>

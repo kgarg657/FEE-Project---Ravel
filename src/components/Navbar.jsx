@@ -1,12 +1,32 @@
 import React, { useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { LogOut, User } from 'lucide-react';
+import { logout } from '../store/authSlice';
 import theme from '../theme';
 
 function Navbar({ onLogout }) {
+  const dispatch = useDispatch();
   const [isHovered, setIsHovered] = useState(false);
+
+  // Read current logged-in user from Redux store with localStorage fallback
+  const reduxUser = useSelector((state) => state.auth?.currentUser);
+  const user = reduxUser || (() => {
+    try {
+      const raw = localStorage.getItem('ravel_user');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const displayName = user?.fullName || user?.name || 'J. Doe';
+  const displayRole = user?.role || 'Senior Auditor';
 
   const handleLogoutClick = () => {
     localStorage.removeItem('ravel_user');
+    localStorage.removeItem('ravel_auditor_id');
+    localStorage.removeItem('ravel_keep_logged_in');
+    dispatch(logout());
     if (onLogout) {
       onLogout();
     }
@@ -44,7 +64,7 @@ function Navbar({ onLogout }) {
           </div>
 
           <span style={{ color: theme.colors.textPrimary, fontSize: '13px', fontWeight: 500 }}>
-            Ravel | J. Doe <span style={{ color: theme.colors.textMuted }}>(Senior Auditor)</span>
+            Ravel | {displayName} <span style={{ color: theme.colors.textMuted }}>({displayRole})</span>
           </span>
         </div>
 

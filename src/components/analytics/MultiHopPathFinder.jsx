@@ -48,26 +48,30 @@ export default function MultiHopPathFinder({
 
     setIsAnalyzing(true);
 
-    // 1. Build Adjacency List
+    // 1. Build Adjacency List with normalized String IDs
     const adj = {};
-    nodes.forEach((n) => (adj[n.id] = []));
+    nodes.forEach((n) => (adj[String(n.id)] = []));
     edges.forEach((e) => {
-      if (adj[e.source]) adj[e.source].push({ target: e.target, edge: e });
-      if (adj[e.target]) adj[e.target].push({ target: e.source, edge: e });
+      const src = String(e.source);
+      const tgt = String(e.target);
+      if (adj[src]) adj[src].push({ target: tgt, edge: e });
+      if (adj[tgt]) adj[tgt].push({ target: src, edge: e });
     });
 
     let foundPath = null;
+    const targetStr = String(targetId);
+    const sourceStr = String(sourceId);
 
     // 2. Traversal respecting BFS / DFS and maxHops
     if (algorithm === 'BFS') {
-      const queue = [[sourceId]];
-      const visited = new Set([sourceId]);
+      const queue = [[sourceStr]];
+      const visited = new Set([sourceStr]);
 
       while (queue.length > 0) {
         const currentPath = queue.shift();
         const lastNode = currentPath[currentPath.length - 1];
 
-        if (lastNode === targetId) {
+        if (lastNode === targetStr) {
           foundPath = currentPath;
           break;
         }
@@ -83,14 +87,14 @@ export default function MultiHopPathFinder({
         }
       }
     } else {
-      const stack = [[sourceId]];
+      const stack = [[sourceStr]];
       const visited = new Set();
 
       while (stack.length > 0) {
         const currentPath = stack.pop();
         const lastNode = currentPath[currentPath.length - 1];
 
-        if (lastNode === targetId) {
+        if (lastNode === targetStr) {
           foundPath = currentPath;
           break;
         }
@@ -171,11 +175,11 @@ export default function MultiHopPathFinder({
 
     setPathResult(computedPath);
 
-    const srcNode = nodes.find((n) => String(n.id) === String(sourceId));
-    const tgtNode = nodes.find((n) => String(n.id) === String(targetId));
+    const srcNode = nodes.find((n) => String(n.id) === sourceStr);
+    const tgtNode = nodes.find((n) => String(n.id) === targetStr);
 
-    const sourceLabel = srcNode?.data?.label || srcNode?.label || String(sourceId);
-    const targetLabel = tgtNode?.data?.label || tgtNode?.label || String(targetId);
+    const sourceLabel = srcNode?.data?.label || srcNode?.label || sourceStr;
+    const targetLabel = tgtNode?.data?.label || tgtNode?.label || targetStr;
 
     // 5. Execute AI Narrative
     try {

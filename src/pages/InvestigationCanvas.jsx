@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import { PanelRightClose, PanelRightOpen, GripVertical, Clock } from 'lucide-react';
 import GraphCanvas from '../components/GraphCanvas';
 import AddEntitySidebar from '../components/AddEntitySidebar';
@@ -21,6 +22,19 @@ export default function InvestigationCanvas({
   const [selectedNode, setSelectedNode] = useState(null);
   const [isTimelineView, setIsTimelineView] = useState(false);
   
+  // Dynamic User Session
+  const reduxUser = useSelector((state) => state.auth?.currentUser);
+  const user = reduxUser || (() => {
+    try {
+      const raw = localStorage.getItem('ravel_user');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const displayName = user?.fullName || user?.name || 'Auditor';
+  const displayRole = user?.role || 'Senior Auditor';
+
   // Resizable Layout States
   const [sidebarWidth, setSidebarWidth] = useState(360);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -126,7 +140,7 @@ export default function InvestigationCanvas({
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <span style={{ color: theme.colors.textSecondary, fontSize: '0.85rem' }}>
-              Logged in: J. Doe (Senior Auditor)
+              Logged in: {displayName} ({displayRole})
             </span>
             
             {/* Timeline Toggle Switch */}
@@ -278,7 +292,7 @@ export default function InvestigationCanvas({
                 onNodesChangeParent={setNodes}
                 onEdgesChangeParent={setEdges}
                 onNodeClick={(node) => handleNodeClick(node)}
-                highlightedNodeIds={highlightedNodeIds} /* FIXED: Passed down highlightedNodeIds */
+                highlightedNodeIds={highlightedNodeIds}
               />
             </div>
           )}

@@ -23,17 +23,20 @@ export default function CircularReferenceDetector({
   const [aiAnalysis, setAiAnalysis] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // Pure Algorithmic Cycle Detection (DFS)
+  // Pure Algorithmic Cycle Detection (DFS) with deduplication
   const detectedLoops = useMemo(() => {
     const adjList = {};
     nodes.forEach((n) => (adjList[String(n.id)] = []));
     edges.forEach((e) => {
       const src = String(e.source);
       const tgt = String(e.target);
-      if (adjList[src]) adjList[src].push(tgt);
+      if (adjList[src] && !adjList[src].includes(tgt)) {
+        adjList[src].push(tgt);
+      }
     });
 
     const loops = [];
+    const seenCycles = new Set();
     const visited = new Set();
     const recStack = new Set();
     const path = [];
@@ -50,21 +53,26 @@ export default function CircularReferenceDetector({
         } else if (recStack.has(neighbor)) {
           const cycleStartIdx = path.indexOf(neighbor);
           const cyclePath = path.slice(cycleStartIdx);
+          const cycleKey = [...cyclePath].sort().join('-');
 
-          const entityLabels = cyclePath
-            .map((id) => {
-              const node = nodes.find((n) => String(n.id) === String(id));
-              return node?.data?.label || node?.label || id;
-            })
-            .join(' → ');
+          if (!seenCycles.has(cycleKey) && cyclePath.length >= 2) {
+            seenCycles.add(cycleKey);
 
-          loops.push({
-            id: `Loop-${loops.length + 1}`,
-            type: 'Approval Circle',
-            entities: entityLabels,
-            riskScore: 'Critical',
-            rawPath: cyclePath,
-          });
+            const entityLabels = cyclePath
+              .map((id) => {
+                const node = nodes.find((n) => String(n.id) === String(id));
+                return node?.data?.label || node?.label || id;
+              })
+              .join(' → ');
+
+            loops.push({
+              id: `Loop-${loops.length + 1}`,
+              type: 'Approval Circle',
+              entities: entityLabels,
+              riskScore: 'Critical',
+              rawPath: cyclePath,
+            });
+          }
         }
       }
 
@@ -73,7 +81,8 @@ export default function CircularReferenceDetector({
     }
 
     nodes.forEach((n) => {
-      if (!visited.has(n.id)) dfs(n.id);
+      const idStr = String(n.id);
+      if (!visited.has(idStr)) dfs(idStr);
     });
 
     // Fallback display if no true circular loops exist in current graph

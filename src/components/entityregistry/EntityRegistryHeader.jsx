@@ -1,7 +1,20 @@
 import React from 'react';
+import { useSelector } from 'react-redux';
 import theme from '../../theme';
 
 export default function EntityRegistryHeader() {
+  const reduxUser = useSelector((state) => state.auth?.currentUser);
+  const user = reduxUser || (() => {
+    try {
+      const raw = localStorage.getItem('ravel_user');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const displayName = user?.fullName || user?.name || 'Auditor';
+  const displayRole = user?.role || 'Senior Auditor';
+
   return (
     <div
       style={{
@@ -25,7 +38,7 @@ export default function EntityRegistryHeader() {
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <span style={{ color: theme.colors.textSecondary, fontSize: '0.85rem' }}>
-            Logged in: J. Doe (Senior Auditor)
+            Logged in: {displayName} ({displayRole})
           </span>
         </div>
       </div>

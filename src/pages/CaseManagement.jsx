@@ -1,13 +1,13 @@
+// src/pages/CaseManagement.jsx
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Search, Plus, ExternalLink, Edit2, UserPlus, ShieldAlert, Activity } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import theme from '../theme';
 
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Select from '../components/Select';
-import Badge from '../components/Badge';
 import Modal from '../components/Modal';
 import Table from '../components/Table';
 import Drawer from '../components/Drawer';
@@ -18,8 +18,19 @@ import { getCases, createCase } from '../services/supabaseService';
 function CaseManagement({ onNavigate }) {
     const dispatch = useDispatch();
 
-    // Pull cases from the central Redux store or local state
-    const reduxCases = useSelector((state) => state.cases.cases || []);
+    // DYNAMIC USER SESSION FROM REDUX WITH LOCALSTORAGE FALLBACK
+    const currentUser = useSelector((state) => state.auth?.currentUser);
+    const user = currentUser || (() => {
+        try {
+            const raw = localStorage.getItem('ravel_user');
+            return raw ? JSON.parse(raw) : null;
+        } catch {
+            return null;
+        }
+    })();
+    const displayName = user?.fullName || user?.name || 'Auditor';
+    const displayRole = user?.role || 'Senior Auditor';
+
     const [cases, setCases] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -41,26 +52,28 @@ function CaseManagement({ onNavigate }) {
             setLoading(true);
             const dbCases = await getCases();
 
-            // Map Supabase database columns to UI table structure
-            const formattedCases = dbCases.map((item, index) => ({
-                id: item.id || `#CA00${index + 1}`,
-                type: item.type || 'Procurement Fraud',
-                name: item.title || 'Unnamed Case',
-                entities: item.entities || 'Vendor: Target\nEmployee: Unassigned',
-                identifiers: item.identifiers || 'GST: ---\nSSN: ---',
-                verifiedStatus: item.verified_status || 'Suggested',
-                riskLevel: item.severity || 'Medium',
-                status: item.status || 'Open',
-                lastModified: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Today'
-            }));
-
-            setCases(formattedCases);
+            if (dbCases && dbCases.length > 0) {
+                const formattedCases = dbCases.map((item, index) => ({
+                    id: item.id || `#CA00${index + 1}`,
+                    type: item.type || 'Procurement Fraud',
+                    name: item.title || 'Unnamed Case',
+                    entities: item.entities || 'Vendor: Target\nEmployee: Unassigned',
+                    identifiers: item.identifiers || 'GST: ---\nSSN: ---',
+                    verifiedStatus: item.verified_status || 'Suggested',
+                    riskLevel: item.severity || 'Medium',
+                    status: item.status || 'Open',
+                    lastModified: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Today'
+                }));
+                setCases(formattedCases);
+            } else {
+                setCases([]); // Clean blank state if no cases exist in database
+            }
             setLoading(false);
         }
         loadSupabaseCases();
     }, []);
 
-    // Filter logic matching the selected dropdown values
+    // Filter logic
     const filteredCases = cases.filter(item => {
         if (typeFilter && item.type !== typeFilter) return false;
         if (riskFilter && item.riskLevel !== riskFilter) return false;
@@ -108,22 +121,22 @@ function CaseManagement({ onNavigate }) {
     return (
         <div style={{ padding: '24px 32px', backgroundColor: theme.colors.bg, minHeight: '100vh', fontFamily: theme.fonts?.sans || 'sans-serif' }}>
 
-            {/* Top Header Workspace Info */}
+            {/* Dynamic Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div>
                     <h1 style={{ color: theme.colors.textPrimary, fontSize: '28px', fontWeight: 600, margin: 0 }}>
                         Case Management & Investigation Workspace
                     </h1>
                     <span style={{ color: theme.colors.textSecondary, fontSize: '15px' }}>
-                        Logged in: J. Doe (Senior Auditor) &nbsp;&nbsp;|&nbsp;&nbsp; Timeline &nbsp;<input type="checkbox" checked={timelineChecked} onChange={(e) => setTimelineChecked(e.target.checked)} style={{ verticalAlign: 'middle', cursor: 'pointer' }} />
+                        Logged in: {displayName} ({displayRole}) &nbsp;&nbsp;|&nbsp;&nbsp; Timeline &nbsp;<input type="checkbox" checked={timelineChecked} onChange={(e) => setTimelineChecked(e.target.checked)} style={{ verticalAlign: 'middle', cursor: 'pointer' }} />
                     </span>
                 </div>
             </div>
 
-            {/* Main Grid Layout: Left Content & Right Analytics Sidebar */}
+            {/* Main Grid Layout */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '24px', alignItems: 'start' }}>
 
-                {/* Left Column (Master List & Filters) */}
+                {/* Left Column */}
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                         <h3 style={{ color: theme.colors.textPrimary, fontSize: '16px', fontWeight: 600, margin: 0 }}>
@@ -187,7 +200,7 @@ function CaseManagement({ onNavigate }) {
                         </div>
                     </Card>
 
-                    {/* Table Component Card */}
+                    {/* Table Component */}
                     <Card padding="0">
                         <Table
                             columns={columns}
@@ -197,10 +210,8 @@ function CaseManagement({ onNavigate }) {
                     </Card>
                 </div>
 
-                {/* Right Column (Statistics & Feeds Sidebar) */}
+                {/* Right Column */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-                    {/* Statistics Card */}
                     <Card padding="16px">
                         <h4 style={{ color: theme.colors.textPrimary, fontSize: '14px', margin: '0 0 12px 0', borderBottom: `1px solid ${theme.colors.border}`, paddingBottom: '8px' }}>
                             Case Management Statistics
@@ -214,48 +225,19 @@ function CaseManagement({ onNavigate }) {
                                 <span>Open Cases:</span>
                                 <strong style={{ color: '#ef4444' }}>{cases.filter(c => c.status === 'Open').length} (Critical)</strong>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span>Total Entities (linked):</span>
-                                <strong style={{ color: theme.colors.textPrimary }}>67</strong>
-                            </div>
                         </div>
                     </Card>
 
-                    {/* Flagged Case Feed */}
-                    <Card padding="16px">
-                        <h4 style={{ color: theme.colors.textPrimary, fontSize: '13px', margin: '0 0 4px 0' }}>
-                            Flagged Case Feed
-                        </h4>
-                        <span style={{ fontSize: '11px', color: theme.colors.textMuted, display: 'block', marginBottom: '10px' }}>
-                            High risk unverified connections
-                        </span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px' }}>
-                            <div style={{ padding: '8px', backgroundColor: theme.colors.surfaceHover, borderRadius: '6px', borderLeft: '3px solid #ef4444' }}>
-                                <span style={{ color: theme.colors.textPrimary, fontWeight: 500 }}>Case #CA001 Procurement Fraud associated with Employee B. Patel</span>
-                            </div>
-                            <div style={{ padding: '8px', backgroundColor: theme.colors.surfaceHover, borderRadius: '6px', borderLeft: '3px solid #ef4444' }}>
-                                <span style={{ color: theme.colors.textPrimary, fontWeight: 500 }}>Case #CA002 Conflict of Interest associated with Employee B. Patel</span>
-                            </div>
-                            <div style={{ padding: '8px', backgroundColor: theme.colors.surfaceHover, borderRadius: '6px', borderLeft: '3px solid #f59e0b' }}>
-                                <span style={{ color: theme.colors.textPrimary, fontWeight: 500 }}>Case #CA003 Quarter-End Sales Spikes</span>
-                            </div>
-                        </div>
-                    </Card>
-
-                    {/* Case Activity Log */}
                     <Card padding="16px">
                         <h4 style={{ color: theme.colors.textPrimary, fontSize: '13px', margin: '0 0 10px 0' }}>
                             Case Activity Log
                         </h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11px', color: theme.colors.textPrimary }}>
-                            <div>Case #CA002 opened by J. Doe</div>
-                            <div style={{ borderTop: `1px solid ${theme.colors.border}`, paddingTop: '6px' }}>Case #CA001 updated with new bank details for B. Patel</div>
-                            <div style={{ borderTop: `1px solid ${theme.colors.border}`, paddingTop: '6px' }}>Suggested link added to Project Atlas Case</div>
+                            <div>Auditor session active: {displayName}</div>
+                            <div style={{ borderTop: `1px solid ${theme.colors.border}`, paddingTop: '6px' }}>Ready for new case initialization</div>
                         </div>
                     </Card>
-
                 </div>
-
             </div>
 
             {/* Modal for Creating New Case */}
@@ -316,7 +298,6 @@ function CaseManagement({ onNavigate }) {
                                 linked_nodes: []
                             };
 
-                            // Save to Supabase database
                             const saved = await createCase(newDbRecord);
 
                             if (saved) {
@@ -343,7 +324,7 @@ function CaseManagement({ onNavigate }) {
                 </div>
             </Modal>
 
-            {/* Drawer Component for View/Edit Actions */}
+            {/* Drawer */}
             <Drawer
                 isOpen={isDrawerOpen}
                 onClose={() => setIsDrawerOpen(false)}
@@ -360,14 +341,9 @@ function CaseManagement({ onNavigate }) {
                             <span style={{ fontSize: '12px', color: theme.colors.textMuted, display: 'block', marginBottom: '4px' }}>Core Entities Connected:</span>
                             <pre style={{ margin: 0, fontSize: '12px', fontFamily: 'inherit', color: theme.colors.textPrimary, whiteSpace: 'pre-wrap' }}>{selectedCase.entities}</pre>
                         </div>
-                        <div style={{ backgroundColor: theme.colors.surfaceHover, padding: '12px', borderRadius: '6px' }}>
-                            <span style={{ fontSize: '12px', color: theme.colors.textMuted, display: 'block', marginBottom: '4px' }}>Identifiers Tracked:</span>
-                            <pre style={{ margin: 0, fontSize: '12px', fontFamily: 'inherit', color: theme.colors.textPrimary, whiteSpace: 'pre-wrap' }}>{selectedCase.identifiers}</pre>
-                        </div>
                     </div>
                 )}
             </Drawer>
-
         </div>
     );
 }

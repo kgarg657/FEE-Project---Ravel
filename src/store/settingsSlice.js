@@ -1,8 +1,27 @@
 // src/store/settingsSlice.js
 import { createSlice } from '@reduxjs/toolkit';
 
+const getInitialProfile = () => {
+    try {
+        const raw = localStorage.getItem('ravel_user');
+        if (raw) {
+            const user = JSON.parse(raw);
+            if (user) {
+                return {
+                    name: user.fullName || user.name || 'J. Doe',
+                    role: user.role || 'Senior Auditor',
+                    email: user.email || 'J.Doe@ravel.io',
+                };
+            }
+        }
+    } catch (e) {
+        // ignore
+    }
+    return { name: 'J. Doe', role: 'Senior Auditor', email: 'J.Doe@ravel.io' };
+};
+
 const initialState = {
-    profile: { name: 'J. Doe', role: 'Senior Auditor', email: 'J.Doe@ravel.io' },
+    profile: getInitialProfile(),
     display: { dark: true, color: '#06b6d4', font: 14 },
     notifs: { cases: false, critical: false, suggestions: false, email: true, inApp: false },
     rules: [

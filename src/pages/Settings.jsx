@@ -20,6 +20,11 @@ import { getUserSettings, updateUserSettings } from '../services/supabaseService
 
 export default function Settings() {
     const dispatch = useDispatch();
+    
+    // 1. DYNAMIC USER SESSION FROM REDUX
+    const currentUser = useSelector((state) => state.auth?.currentUser);
+    const currentUserId = currentUser?.auditorId || currentUser?.id;
+
     const settings = useSelector((state) => state.settings);
     const { profile, display, notifs, rules } = settings;
 
@@ -30,31 +35,41 @@ export default function Settings() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
-    // Default test user UUID matching Supabase table format
-    const currentUserId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
-
-    // 1. Load settings from Supabase on component mount
+    // 2. Sync logged-in user profile & fetch their specific settings
     useEffect(() => {
         async function loadSettings() {
             setLoading(true);
-            const savedData = await getUserSettings(currentUserId);
-            if (savedData) {
-                if (savedData.theme_prefs) {
-                    dispatch(updateDisplay(savedData.theme_prefs));
-                }
-                if (savedData.rule_sensitivity) {
-                    const { profile: savedProfile, notifs: savedNotifs } = savedData.rule_sensitivity;
-                    if (savedProfile) dispatch(updateProfile(savedProfile));
-                    if (savedNotifs) dispatch(updateNotifications(savedNotifs));
+
+            // Sync user details from Auth state first
+            if (currentUser) {
+                dispatch(updateProfile({
+                    name: currentUser.fullName || currentUser.name || 'Auditor',
+                    email: currentUser.email || '',
+                    role: currentUser.role || 'Auditor'
+                }));
+            }
+
+            if (currentUserId) {
+                const savedData = await getUserSettings(currentUserId);
+                if (savedData) {
+                    if (savedData.theme_prefs) {
+                        dispatch(updateDisplay(savedData.theme_prefs));
+                    }
+                    if (savedData.rule_sensitivity) {
+                        const { profile: savedProfile, notifs: savedNotifs } = savedData.rule_sensitivity;
+                        if (savedProfile) dispatch(updateProfile(savedProfile));
+                        if (savedNotifs) dispatch(updateNotifications(savedNotifs));
+                    }
                 }
             }
             setLoading(false);
         }
         loadSettings();
-    }, [dispatch]);
+    }, [dispatch, currentUserId, currentUser]);
 
-    // 2. Helper to sync updates to Supabase database
+    // 3. Helper to sync updates to Supabase database per User ID
     const saveToSupabase = async (updatedDisplay, updatedProfile, updatedNotifs, updatedRules) => {
+        if (!currentUserId) return;
         setSaving(true);
         const ruleSensitivityPayload = {
             profile: updatedProfile || profile,
@@ -67,7 +82,7 @@ export default function Settings() {
         setSaving(false);
     };
 
-    // Password change states for validation
+    // Password change states
     const [currentPwd, setCurrentPwd] = useState('');
     const [newPwd, setNewPwd] = useState('');
     const [confirmPwd, setConfirmPwd] = useState('');
@@ -124,9 +139,12 @@ export default function Settings() {
         return <div className="p-6 text-white bg-slate-900 min-h-screen">Loading platform settings...</div>;
     }
 
+    const displayName = profile.name || currentUser?.fullName || currentUser?.name || 'Auditor';
+    const displayRole = profile.role || currentUser?.role || 'Senior Auditor';
+
     return (
         <div
-            className="p-4 md:p-5 pb-16 flex flex-col gap-3 w-full min-h-screen select-none box-border"
+            className="p-4 md:p-5 pb-16 flex flex-col gap-3 w-full min-h-screen box-border"
             style={{
                 backgroundColor: display.dark ? theme.colors.bg : '#f8fafc',
                 color: display.dark ? theme.colors.textPrimary : '#0f172a',
@@ -134,7 +152,7 @@ export default function Settings() {
                 fontSize: `${display.font}px`
             }} >
 
-            {/* Standard Header Component Aligned with Case Management */}
+            {/* Dynamic Header */}
             <div className="flex flex-col items-start self-start w-full mb-1">
                 <div className="flex justify-between items-center w-full">
                     <h1 className="font-bold tracking-tight m-0 p-0 leading-tight" style={{ fontSize: '1.4rem', color: display.dark ? '#ffffff' : '#0f172a' }}>
@@ -143,13 +161,13 @@ export default function Settings() {
                     {saving && <span className="text-xs text-blue-400 animate-pulse">Syncing with Supabase...</span>}
                 </div>
                 <p className="font-normal mt-1 mb-0" style={{ fontSize: '0.85rem', color: display.dark ? '#94a3b8' : '#475569' }}>
-                    Logged in: {profile.name} ({profile.role})
+                    Logged in: {displayName} ({displayRole})
                 </p>
             </div>
 
             {/* Main 3-Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start w-full">
-                {/* COLUMN 1: Left Navigation & Compact Settings Blocks */}
+                {/* COLUMN 1 */}
                 <div className="lg:col-span-3 flex flex-col gap-2.5">
                     <div style={{ accentColor: display.color, fontSize: `${display.font}px` }}>
                         <Tabs tabs={[{ id: 'general', label: 'General' }, { id: 'security', label: 'Security & Access' }]} activeTab={leftTab} onChange={setLeftTab} variant="line" />
@@ -158,7 +176,7 @@ export default function Settings() {
                         <div className="flex flex-col gap-1.5" style={{ fontSize: `${display.font}px` }}>
                             <Input
                                 label="Name"
-                                value={profile.name}
+                                value={displayName}
                                 onChange={e => {
                                     const updated = { ...profile, name: e.target.value };
                                     dispatch(updateProfile({ name: e.target.value }));
@@ -168,14 +186,14 @@ export default function Settings() {
                             <div className="flex flex-col gap-0.5">
                                 <label className="text-gray-400 font-semibold uppercase" style={{ fontSize: `${display.font * 0.75}px` }}>Role</label>
                                 <div className="flex items-center justify-between bg-surface border border-gray-700 rounded-md px-2.5 py-1 text-gray-300" style={{ fontSize: `${display.font}px` }}>
-                                    <span>{profile.role}</span>
+                                    <span>{displayRole}</span>
                                     <span className="text-gray-500 italic" style={{ fontSize: `${display.font * 0.75}px` }}>uneditable</span>
                                 </div>
                             </div>
                             <Input
                                 label="Email"
                                 type="email"
-                                value={profile.email}
+                                value={profile.email || currentUser?.email || ''}
                                 onChange={e => {
                                     const updated = { ...profile, email: e.target.value };
                                     dispatch(updateProfile({ email: e.target.value }));
@@ -282,7 +300,7 @@ export default function Settings() {
                     </Card>
                 </div>
 
-                {/* COLUMN 2: Center Analytical Rule Management Table */}
+                {/* COLUMN 2 */}
                 <div className="lg:col-span-6 flex flex-col gap-2.5">
                     <div style={{ accentColor: display.color, fontSize: `${display.font}px` }}>
                         <Tabs tabs={[{ id: 'analytical', label: 'Analytical Rules' }, { id: 'logs', label: 'System Logs' }]} activeTab={centerTab} onChange={setCenterTab} variant="line" />
@@ -294,41 +312,28 @@ export default function Settings() {
                     </Card>
                 </div>
 
-                {/* COLUMN 3: Right Summary & Audit Cards */}
+                {/* COLUMN 3 */}
                 <div className="lg:col-span-3 flex flex-col gap-2.5">
                     <Card title="System Configuration Summary" padding="9px">
                         <div className="flex flex-col gap-2" style={{ fontSize: `${display.font}px` }}>
-                            <div className="flex justify-between"><span className="text-gray-400">Configured Rules:</span><span className="font-semibold" style={{ color: display.color }}>{rules.length + 21}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-400">Active Rules:</span><span className="font-semibold" style={{ color: display.color }}>{rules.filter(r => r.active).length + 16}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-400">User Accounts:</span><span className="font-semibold" style={{ color: display.color }}>12 (Auditor)</span></div>
-                            <div className="flex justify-between"><span className="text-gray-400">Audit Logs:</span><span className="font-semibold" style={{ color: display.color }}>1540 (Active)</span></div>
-                        </div>
-                    </Card>
-
-                    <Card title="Rule Performance Overview" padding="9px">
-                        <div className="flex flex-col gap-2" style={{ fontSize: `${display.font}px` }}>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-400" style={{ fontSize: `${display.font}px` }}>High-Risk Matches <br /><span style={{ fontSize: `${display.font * 0.75}px` }} className="text-gray-500">(Last 30 days)</span></span>
-                                <span className="font-bold" style={{ fontSize: `${display.font * 1.15}px`, color: display.color }}>120</span>
-                            </div>
-                            <div className="flex justify-between items-center"><span className="text-gray-400">Pending Suggestions</span><span className="font-bold text-amber-500" style={{ fontSize: `${display.font * 1.15}px` }}>45</span></div>
-                            <div className="flex justify-between items-center"><span className="text-gray-400">Rule False Positives</span><span className="font-semibold text-white">15</span></div>
+                            <div className="flex justify-between"><span className="text-gray-400">Configured Rules:</span><span className="font-semibold" style={{ color: display.color }}>{rules.length}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-400">Active Rules:</span><span className="font-semibold" style={{ color: display.color }}>{rules.filter(r => r.active).length}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-400">User Accounts:</span><span className="font-semibold" style={{ color: display.color }}>1 (Active)</span></div>
                         </div>
                     </Card>
 
                     <Card title="System Audit Trail" padding="9px">
                         <div className="flex flex-col justify-between" style={{ minHeight: '94px', fontSize: `${display.font}px` }}>
                             <ul className="flex flex-col gap-1 text-gray-400" style={{ fontSize: `${display.font * 0.85}px` }}>
-                                <li>User Admin updated RU_01 <br /><span style={{ fontSize: `${display.font * 0.75}px` }} className="text-gray-500">(Sensitivity: High)</span></li>
-                                <li>{profile.name} changed settings</li>
-                                <li>New user created</li>
+                                <li>User {displayName} session active</li>
+                                <li>Platform loaded successfully</li>
                             </ul>
                         </div>
                     </Card>
                 </div>
             </div>
 
-            {/* Fixed Pagination Section at the Bottom */}
+            {/* Pagination */}
             <div className="fixed bottom-0 left-0 right-0 z-50 px-4 md:px-5 py-2.5 flex justify-between items-center text-gray-400 border-t border-gray-800 shadow-lg" style={{ backgroundColor: display.dark ? theme.colors.bg : '#ffffff', fontSize: `${display.font}px` }}>
                 <span>1-2 next</span>
                 <Pagination currentPage={page} totalPages={2} onPageChange={setPage} itemsPerPage={4} totalItems={rules.length} />
@@ -358,6 +363,3 @@ export default function Settings() {
         </div>
     );
 }
-
-
-

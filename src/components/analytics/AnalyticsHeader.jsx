@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import { RefreshCw } from 'lucide-react';
 import Button from '../Button';
 import theme from '../../theme';
@@ -6,6 +7,18 @@ import theme from '../../theme';
 export default function AnalyticsHeader({ onRefresh }) {
   const [timestamp, setTimestamp] = useState(new Date().toLocaleTimeString());
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const reduxUser = useSelector((state) => state.auth?.currentUser);
+  const user = reduxUser || (() => {
+    try {
+      const raw = localStorage.getItem('ravel_user');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const displayName = user?.fullName || user?.name || 'Auditor';
+  const displayRole = user?.role || 'Senior Auditor';
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -43,7 +56,7 @@ export default function AnalyticsHeader({ onRefresh }) {
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <span style={{ color: theme.colors.textSecondary, fontSize: '0.85rem' }}>
-            Logged in: J. Doe (Senior Auditor)
+            Logged in: {displayName} ({displayRole})
           </span>
           <span style={{ color: theme.colors.textMuted, fontSize: '0.82rem' }}>
             System Sync: <strong style={{ color: theme.colors.textPrimary }}>{timestamp}</strong>

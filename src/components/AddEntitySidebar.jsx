@@ -1,3 +1,4 @@
+// src/components/AddEntitySidebar.jsx
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import Card from './Card';
@@ -9,7 +10,7 @@ import theme from '../theme';
 import { addNode, addEdge } from "../store/graphSlice";
 import { saveNode, saveEdge } from "../services/graphService";
 
-function AddEntitySidebar({ onAddEntity }) {
+function AddEntitySidebar() {
   const dispatch = useDispatch();
 
   // Read live nodes from Redux store for target connection list
@@ -69,11 +70,11 @@ function AddEntitySidebar({ onAddEntity }) {
     // Construct React Flow formatted node object
     const newNode = {
       id: newNodeId,
-      type: 'entityNode',
+      type: 'entityNode', // MUST remain 'entityNode' for React Flow styling
       position: randomPosition,
       data: {
         label: formData.name,
-        type: formData.type,
+        type: formData.type, // Entity category stored cleanly inside data
         role: formData.department || formData.type,
         dept: formData.department || '',
         gst: formData.gstNumber || '',
@@ -84,7 +85,6 @@ function AddEntitySidebar({ onAddEntity }) {
         metadata,
       },
       label: formData.name,
-      type: formData.type,
       role: formData.department || formData.type,
       gst: formData.gstNumber || '',
       risk_score: 30,
@@ -123,18 +123,6 @@ function AddEntitySidebar({ onAddEntity }) {
           is_suggested: newEdge.data.isSuggested,
         });
       }
-    }
-
-    // Call legacy parent callback if passed
-    if (onAddEntity) {
-      onAddEntity({
-        id: newNodeId,
-        type: formData.type,
-        label: formData.name,
-        metadata,
-        targetIds: formData.selectedTargetIds,
-        linkType: formData.linkType,
-      });
     }
 
     setShowConfirmModal(false);
