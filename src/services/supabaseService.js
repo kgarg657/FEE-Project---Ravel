@@ -1,6 +1,35 @@
 // // src/services/supabaseService.js
 import { supabase } from '../supabaseClient';
 
+export async function signUpUser({ email, password, name, role }) {
+    const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+        options: { data: { name, role } },
+    });
+    if (error) throw error;
+
+    if (data.user) {
+        const { error: profileError } = await supabase.from('profiles').upsert({
+            id: data.user.id,
+            email: data.user.email,
+            name,
+            role,
+        }, { onConflict: 'id' });
+        if (profileError) throw profileError;
+    }
+    return data;
+}
+
+export async function signInUser(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+    });
+    if (error) throw error;
+    return data;
+}
+
 // ==========================================
 // 1. CASES MANAGEMENT
 // ==========================================

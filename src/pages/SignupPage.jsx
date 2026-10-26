@@ -7,7 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from "../components/Card";
 import Logo from '../components/Logo';
-import { createUserProfile } from '../services/supabaseService';
+import { signUpUser } from '../services/supabaseService';
 import './SignupPage.css';
 
 import bgImage from '../assets/ravel-background.webp.jpeg';
@@ -103,40 +103,13 @@ const SignupPage = () => {
 
     setIsSubmitting(true);
 
-    const newUserId = crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now();
-
-    const newUser = {
-      id: newUserId,
-      role: formData.role,
-      fullName: formData.fullName,
-      email: formData.email,
-      auditorId: formData.auditorId || `AUD-${Math.floor(1000 + Math.random() * 9000)}`,
-      organizationName: formData.organizationName,
-      industry: formData.industry,
-      password: formData.password,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Payload mapped strictly to Supabase 'profiles' table columns (id, name, email, role)
-    const profilePayload = {
-      id: newUser.id,
-      name: newUser.fullName,
-      email: newUser.email,
-      role: newUser.role
-    };
-
     try {
-      // Save profile to Supabase Database
-      const createdProfile = await createUserProfile(profilePayload);
-
-      if (!createdProfile) {
-        setIsSubmitting(false);
-        setErrors({ email: 'Failed to create account in database. Email might already exist.' });
-        return;
-      }
-
-      // Fallback local storage cache
-      localStorage.setItem('ravel_registered_user', JSON.stringify(newUser));
+      await signUpUser({
+        email: formData.email,
+        password: formData.password,
+        name: formData.fullName,
+        role: formData.role,
+      });
 
       setTimeout(() => {
         setIsSubmitting(false);
@@ -150,7 +123,7 @@ const SignupPage = () => {
     } catch (err) {
       console.error('Signup error:', err);
       setIsSubmitting(false);
-      setErrors({ email: 'An unexpected error occurred during database registration.' });
+      setErrors({ email: err.message || 'Unable to create the account.' });
     }
   };
 

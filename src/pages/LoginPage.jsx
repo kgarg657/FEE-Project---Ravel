@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { setUser } from '../store/authSlice';
-import { getProfileByIdOrEmail } from '../services/supabaseService';
+import { setUser, setSession } from '../store/authSlice';
+import { signInUser, getUserProfile } from '../services/supabaseService';
 import theme from '../theme';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -46,30 +46,20 @@ const LoginPage = () => {
     const inputIdentifier = formData.auditorId.trim();
 
     try {
-      // Fetch user profile directly from Supabase 'profiles' table
-      const profile = await getProfileByIdOrEmail(inputIdentifier);
-
-      if (!profile) {
-        setIsSubmitting(false);
-        setErrorMessage('No account found with this ID or Email in Supabase.');
-        return;
-      }
-
-      // Active session details mapped from Supabase profile
+      const { user, session } = await signInUser(inputIdentifier, formData.password);
+      const profile = await getUserProfile(user.id);
       const userCredentials = {
-        auditorId: profile.id,
-        email: profile.email,
-        fullName: profile.name || 'Auditor',
-        role: profile.role || 'Senior Auditor',
+        auditorId: user.id,
+        email: user.email,
+        fullName: profile?.name || user.user_metadata?.name || 'Auditor',
+        role: profile?.role || user.user_metadata?.role || 'Senior Auditor',
         isLoggedIn: true,
         loginTimestamp: new Date().toISOString(),
       };
 
-      // Save session to localStorage for persistence
-      localStorage.setItem('ravel_user', JSON.stringify(userCredentials));
-
-      // Dispatch user credentials to Redux store
+      dispatch(setSession(session));
       dispatch(setUser(userCredentials));
+      localStorage.setItem('ravel_user', JSON.stringify(userCredentials));
 
       if (formData.keepLoggedIn) {
         localStorage.setItem('ravel_auditor_id', profile.id);
@@ -93,7 +83,7 @@ const LoginPage = () => {
     } catch (err) {
       console.error('Login error:', err);
       setIsSubmitting(false);
-      setErrorMessage('An error occurred during authentication.');
+      setErrorMessage(err.message || 'Unable to sign in. Please check your credentials.');
     }
   };
 
